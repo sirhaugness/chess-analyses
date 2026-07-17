@@ -1,11 +1,10 @@
 import { useCallback, useRef, useState } from "react";
 import type { AppPhase, BoardOrientation, BoardRecognitionResult, PlacedPiece, PositionMeta } from "./lib/types";
 import { ImageSourcePicker } from "./components/ImageSourcePicker";
-import { BoardImageCropper } from "./components/BoardImageCropper";
+import { BoardCropFlow } from "./components/BoardCropFlow";
 import { AnalysisLoading } from "./components/AnalysisLoading";
 import { RecognitionReview } from "./components/RecognitionReview";
 import { PositionEditor } from "./components/PositionEditor";
-import { TurnstileWidget } from "./components/TurnstileWidget";
 import { analyzeBoardImage } from "./lib/api";
 import { readFileAsDataUrl, validateImageFile } from "./lib/image-processing";
 import {
@@ -28,7 +27,6 @@ function mapApiError(code: string, message: string): string {
   const map: Record<string, string> = {
     missing_api_url: "Manglende Worker-URL. Sett VITE_API_URL.",
     network_error: "Nettverksfeil. Sjekk tilkoblingen og prøv igjen.",
-    invalid_turnstile: "Ugyldig sikkerhetskontroll. Prøv igjen.",
     origin_not_allowed: "Ikke-tillatt origin.",
     payload_too_large: "For stor request.",
     rate_limit: "OpenAI rate limit. Vent litt og prøv igjen.",
@@ -47,8 +45,6 @@ export default function App() {
   const [rawImage, setRawImage] = useState<string | null>(null);
   const [croppedImage, setCroppedImage] = useState<string | null>(null);
   const [cropMeta, setCropMeta] = useState<{ kb: number } | null>(null);
-  const [turnstileToken, setTurnstileToken] = useState("");
-  const [turnstileReset, setTurnstileReset] = useState(0);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const analyzingRef = useRef(false);
 
@@ -105,11 +101,8 @@ export default function App() {
     setPhase("analyze");
     const res = await analyzeBoardImage({
       imageDataUrl: croppedImage,
-      turnstileToken,
     });
     analyzingRef.current = false;
-    setTurnstileReset((k) => k + 1);
-    setTurnstileToken("");
 
     if (!res.success) {
       setAnalyzeError(mapApiError(res.error.code, res.error.message));
@@ -137,7 +130,7 @@ export default function App() {
     setOrientation(orient);
     setRecognizedPieces(pieces);
     setPhase("review");
-  }, [croppedImage, turnstileToken]);
+  }, [croppedImage]);
 
   const restoreRecognition = () => {
     if (!rawRecognition) return;
@@ -180,11 +173,6 @@ export default function App() {
               {cropMeta && (
                 <p className="text-center text-xs text-stone-500">~{cropMeta.kb} KB</p>
               )}
-              <TurnstileWidget
-                resetKey={turnstileReset}
-                onToken={setTurnstileToken}
-                onError={() => setAnalyzeError("Ugyldig sikkerhetskontroll.")}
-              />
               {analyzeError && <p className="mt-2 text-sm text-red-700">{analyzeError}</p>}
               <button
                 type="button"
@@ -197,7 +185,8 @@ export default function App() {
             </section>
           )}
           {!croppedImage && (
-            <BoardImageCropper
+            <BoardCropFlow
+              key={rawImage}
               imageSrc={rawImage}
               onConfirm={(dataUrl, metaKb) => {
                 setCroppedImage(dataUrl);

@@ -3,6 +3,8 @@ import type { BoardRecognitionResult } from "../../shared/board-recognition-sche
 
 const SYSTEM_PROMPT = `You are a precise chessboard transcription system.
 
+The uploaded image has already been cropped and perspective-corrected to contain only the complete chessboard. Inspect all 64 squares systematically.
+
 Analyze only the cropped photograph of a physical chessboard.
 
 The image should contain one complete 8 by 8 chessboard.
@@ -43,7 +45,7 @@ If the board is rotated, still use the image-relative row and column system.
 Return only data matching the required structured schema.`;
 
 const USER_PROMPT =
-  "Transcribe every occupied square on this chessboard image using image-relative coordinates.";
+  "The uploaded image has already been cropped and perspective-corrected to contain only the complete chessboard. Inspect all 64 squares systematically. Transcribe every occupied square using image-relative coordinates.";
 
 export function validateRecognitionResult(
   result: BoardRecognitionResult,

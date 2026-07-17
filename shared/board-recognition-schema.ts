@@ -58,7 +58,6 @@ export type AnalyzeBoardResponse =
 
 export type AnalyzeBoardRequest = {
   imageDataUrl: string;
-  turnstileToken: string;
 };
 
 export const AnalyzeBoardErrorSchema = z.object({

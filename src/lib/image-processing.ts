@@ -1,13 +1,13 @@
 const MAX_INPUT_BYTES = 3 * 1024 * 1024;
-const EXPORT_SIZE = 1400;
-const JPEG_QUALITY = 0.86;
 
-export type ProcessedImage = {
-  dataUrl: string;
-  approximateSizeKb: number;
-  width: number;
-  height: number;
-};
+export type { ProcessedImage } from "./perspective-export";
+export {
+  approximateKbFromDataUrl,
+  EXPORT_MAX_SIZE,
+  compressCanvasToJpeg,
+  estimateDataUrlBytes,
+} from "./perspective-export";
+import { EXPORT_MAX_SIZE, compressCanvasToJpeg } from "./perspective-export";
 
 export function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -30,7 +30,7 @@ export async function getCroppedImage(
   imageSrc: string,
   pixelCrop: { x: number; y: number; width: number; height: number },
   rotation: number,
-): Promise<ProcessedImage> {
+): Promise<import("./perspective-export").ProcessedImage> {
   const image = await loadImage(imageSrc);
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
@@ -52,8 +52,8 @@ export async function getCroppedImage(
   rctx.rotate(rad);
   rctx.drawImage(image, -image.width / 2, -image.height / 2);
 
-  canvas.width = EXPORT_SIZE;
-  canvas.height = EXPORT_SIZE;
+  canvas.width = EXPORT_MAX_SIZE;
+  canvas.height = EXPORT_MAX_SIZE;
   ctx.drawImage(
     rotCanvas,
     pixelCrop.x,
@@ -62,18 +62,11 @@ export async function getCroppedImage(
     pixelCrop.height,
     0,
     0,
-    EXPORT_SIZE,
-    EXPORT_SIZE,
+    EXPORT_MAX_SIZE,
+    EXPORT_MAX_SIZE,
   );
 
-  const dataUrl = canvas.toDataURL("image/jpeg", JPEG_QUALITY);
-  const bytes = estimateDataUrlBytes(dataUrl);
-  return {
-    dataUrl,
-    approximateSizeKb: Math.round(bytes / 1024),
-    width: EXPORT_SIZE,
-    height: EXPORT_SIZE,
-  };
+  return compressCanvasToJpeg(canvas);
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -83,13 +76,4 @@ function loadImage(src: string): Promise<HTMLImageElement> {
     img.onerror = () => reject(new Error("Kunne ikke laste bildet."));
     img.src = src;
   });
-}
-
-function estimateDataUrlBytes(dataUrl: string): number {
-  const base64 = dataUrl.split(",")[1] ?? "";
-  return Math.floor((base64.length * 3) / 4);
-}
-
-export function approximateKbFromDataUrl(dataUrl: string): number {
-  return Math.round(estimateDataUrlBytes(dataUrl) / 1024);
 }

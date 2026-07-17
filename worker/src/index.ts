@@ -1,13 +1,11 @@
 import type { Env } from "./env";
 import { corsHeaders, isOriginAllowed, parseAllowedOrigins } from "./cors";
-import { allowTurnstileBypass, verifyTurnstile } from "./turnstile";
 import { analyzeBoardWithOpenAI } from "./openai";
 
 const MAX_BODY_BYTES = 2_500_000;
 
 type AnalyzeBody = {
   imageDataUrl?: string;
-  turnstileToken?: string;
 };
 
 function jsonResponse(
@@ -120,7 +118,6 @@ export default {
       }
 
       const imageDataUrl = body.imageDataUrl?.trim();
-      const turnstileToken = body.turnstileToken?.trim() || "";
 
       if (!imageDataUrl) {
         return jsonResponse(
@@ -145,45 +142,6 @@ export default {
           origin,
           allowed,
         );
-      }
-
-      const bypass = allowTurnstileBypass(env, origin);
-      if (!bypass) {
-        if (!env.TURNSTILE_SECRET) {
-          return jsonResponse(
-            {
-              success: false,
-              error: { code: "server_misconfigured", message: "Serveren er ikke riktig konfigurert." },
-            },
-            500,
-            origin,
-            allowed,
-          );
-        }
-        if (!turnstileToken) {
-          return jsonResponse(
-            {
-              success: false,
-              error: { code: "missing_turnstile", message: "Sikkerhetskontroll mangler." },
-            },
-            400,
-            origin,
-            allowed,
-          );
-        }
-        const cfConnecting = request.headers.get("CF-Connecting-IP") || undefined;
-        const valid = await verifyTurnstile(turnstileToken, env.TURNSTILE_SECRET, cfConnecting);
-        if (!valid) {
-          return jsonResponse(
-            {
-              success: false,
-              error: { code: "invalid_turnstile", message: "Ugyldig sikkerhetskontroll." },
-            },
-            403,
-            origin,
-            allowed,
-          );
-        }
       }
 
       const result = await analyzeBoardWithOpenAI(env, imageDataUrl);
