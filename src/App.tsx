@@ -6,7 +6,7 @@ import { AnalysisLoading } from "./components/AnalysisLoading";
 import { RecognitionReview } from "./components/RecognitionReview";
 import { PositionEditor } from "./components/PositionEditor";
 import { analyzeBoardImage } from "./lib/api";
-import { readFileAsDataUrl, validateImageFile } from "./lib/image-processing";
+import { prepareImageFromFile, validateImageFile } from "./lib/image-processing";
 import {
   buildFen,
   defaultMeta,
@@ -43,6 +43,7 @@ function mapApiError(code: string, message: string): string {
 export default function App() {
   const [phase, setPhase] = useState<AppPhase>("home");
   const [homeError, setHomeError] = useState<string | null>(null);
+  const [preparingImage, setPreparingImage] = useState(false);
   const [rawImage, setRawImage] = useState<string | null>(null);
   const [croppedImage, setCroppedImage] = useState<string | null>(null);
   const [cropMeta, setCropMeta] = useState<{ kb: number } | null>(null);
@@ -86,12 +87,15 @@ export default function App() {
       return;
     }
     setHomeError(null);
+    setPreparingImage(true);
     try {
-      const url = await readFileAsDataUrl(file);
-      setRawImage(url);
+      const prepared = await prepareImageFromFile(file);
+      setRawImage(prepared.dataUrl);
       setPhase("crop");
     } catch {
       setHomeError("Kunne ikke lese bildet.");
+    } finally {
+      setPreparingImage(false);
     }
   }, []);
 
@@ -159,6 +163,7 @@ export default function App() {
           onCamera={handleFile}
           onGallery={handleFile}
           error={homeError ?? undefined}
+          busy={preparingImage}
         />
       )}
 

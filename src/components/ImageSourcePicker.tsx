@@ -5,9 +5,10 @@ type Props = {
   onCamera: (file: File) => void;
   onGallery: (file: File) => void;
   error?: string;
+  busy?: boolean;
 };
 
-export function ImageSourcePicker({ onCamera, onGallery, error }: Props) {
+export function ImageSourcePicker({ onCamera, onGallery, error, busy = false }: Props) {
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
 
@@ -21,9 +22,23 @@ export function ImageSourcePicker({ onCamera, onGallery, error }: Props) {
       </header>
 
       <div className="flex flex-col gap-3">
-        <PrimaryButton onClick={() => cameraRef.current?.click()}>Ta bilde</PrimaryButton>
-        <SecondaryButton onClick={() => galleryRef.current?.click()}>Velg bilde</SecondaryButton>
+        <PrimaryButton disabled={busy} onClick={() => cameraRef.current?.click()}>
+          {busy ? "Forbereder bildet …" : "Ta bilde"}
+        </PrimaryButton>
+        <SecondaryButton disabled={busy} onClick={() => galleryRef.current?.click()}>
+          Velg bilde
+        </SecondaryButton>
       </div>
+
+      {busy && (
+        <div className="flex items-center justify-center gap-3 text-sm text-stone-300">
+          <div
+            className="h-6 w-6 animate-spin rounded-full border-2 border-white/20 border-t-emerald-400"
+            aria-hidden
+          />
+          Komprimerer bildet lokalt …
+        </div>
+      )}
 
       <input
         ref={cameraRef}

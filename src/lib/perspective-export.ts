@@ -4,7 +4,7 @@ import { orderedCornersToArray } from "./board-geometry";
 export const EXPORT_MAX_SIZE = 1600;
 export const TARGET_MAX_BYTES = Math.floor(1.5 * 1024 * 1024);
 export const ABSOLUTE_MAX_BYTES = Math.floor(2.5 * 1024 * 1024);
-export const JPEG_QUALITIES = [0.82, 0.75, 0.68] as const;
+export const JPEG_QUALITIES = [0.82, 0.75, 0.68, 0.58, 0.48, 0.38] as const;
 
 export type ProcessedImage = {
   dataUrl: string;
@@ -172,32 +172,61 @@ export function warpPerspectiveFromImageData(
   return out;
 }
 
+function scaleCanvas(source: HTMLCanvasElement, factor: number): HTMLCanvasElement {
+  const width = Math.max(320, Math.round(source.width * factor));
+  const height = Math.max(320, Math.round(source.height * factor));
+  const scaled = document.createElement("canvas");
+  scaled.width = width;
+  scaled.height = height;
+  const ctx = scaled.getContext("2d");
+  if (!ctx) throw new Error("Canvas ikke tilgjengelig.");
+  ctx.drawImage(source, 0, 0, width, height);
+  return scaled;
+}
+
 export function compressCanvasToJpeg(
   canvas: HTMLCanvasElement,
   qualities: readonly number[] = JPEG_QUALITIES,
 ): ProcessedImage {
-  let lastDataUrl = "";
-  for (const quality of qualities) {
-    lastDataUrl = canvas.toDataURL("image/jpeg", quality);
+  let workCanvas = canvas;
+
+  for (let round = 0; round < 8; round++) {
+    let lastDataUrl = "";
+    for (const quality of qualities) {
+      lastDataUrl = workCanvas.toDataURL("image/jpeg", quality);
+      const bytes = estimateDataUrlBytes(lastDataUrl);
+      if (bytes <= TARGET_MAX_BYTES) {
+        return {
+          dataUrl: lastDataUrl,
+          approximateSizeKb: Math.round(bytes / 1024),
+          width: workCanvas.width,
+          height: workCanvas.height,
+        };
+      }
+    }
     const bytes = estimateDataUrlBytes(lastDataUrl);
-    if (bytes <= TARGET_MAX_BYTES) {
+    if (bytes <= ABSOLUTE_MAX_BYTES) {
       return {
         dataUrl: lastDataUrl,
         approximateSizeKb: Math.round(bytes / 1024),
-        width: canvas.width,
-        height: canvas.height,
+        width: workCanvas.width,
+        height: workCanvas.height,
       };
     }
+    if (workCanvas !== canvas) {
+      workCanvas = scaleCanvas(workCanvas, 0.85);
+    } else {
+      workCanvas = scaleCanvas(canvas, 0.85);
+    }
   }
-  const bytes = estimateDataUrlBytes(lastDataUrl);
-  if (bytes > ABSOLUTE_MAX_BYTES) {
-    throw new Error("For stort bilde etter komprimering. Juster utsnittet og prøv igjen.");
-  }
+
+  const fallback = workCanvas.toDataURL("image/jpeg", 0.32);
+  const bytes = estimateDataUrlBytes(fallback);
   return {
-    dataUrl: lastDataUrl,
+    dataUrl: fallback,
     approximateSizeKb: Math.round(bytes / 1024),
-    width: canvas.width,
-    height: canvas.height,
+    width: workCanvas.width,
+    height: workCanvas.height,
   };
 }
 
