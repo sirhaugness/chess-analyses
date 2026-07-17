@@ -134,8 +134,15 @@ export default function App() {
     setRawRecognition(result);
     setOrientation(orient);
     setRecognizedPieces(pieces);
-    setPhase("review");
-  }, [croppedImage]);
+    setConfirmedPhotoPieces(pieces);
+    setAnalysisStartPieces(pieces);
+
+    if (!startAnalysis(pieces, orient)) {
+      setPhase("review");
+      return;
+    }
+    setPhase("analysis");
+  }, [croppedImage, startAnalysis]);
 
   const restoreRecognition = () => {
     if (!rawRecognition) return;
@@ -236,7 +243,6 @@ export default function App() {
           meta={meta}
           onMetaChange={setMeta}
           onConfirm={confirmReview}
-          onFreeEdit={() => setPhase("position_edit")}
         />
       )}
 

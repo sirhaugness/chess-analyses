@@ -7,7 +7,6 @@ type Props = {
   onNewImage: () => void;
 };
 
-/** Manual crop only — OpenCV auto-detection removed to keep mobile UI responsive. */
 export function BoardCropFlow({ imageSrc, onConfirm, onBack, onNewImage }: Props) {
   return (
     <BoardImageCropper
@@ -18,5 +17,3 @@ export function BoardCropFlow({ imageSrc, onConfirm, onBack, onNewImage }: Props
     />
   );
 }
-
-export { DETECTION_TIMEOUT_MS } from "../lib/async-utils";

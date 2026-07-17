@@ -7,7 +7,7 @@ import { buildFen, defaultMeta } from "../src/lib/chess-position";
 describe("App startup", () => {
   it("renders upload screen without an initial FEN", () => {
     render(<App />);
-    expect(screen.getByText("Sjakkbrett fra bilde")).toBeInTheDocument();
+    expect(screen.getByText("Borhaug Open - analyse")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Ta bilde" })).toBeInTheDocument();
   });
 });

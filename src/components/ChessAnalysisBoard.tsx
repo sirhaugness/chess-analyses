@@ -1,6 +1,6 @@
 import { Chessboard } from "react-chessboard";
 import type { CSSProperties } from "react";
-import type { Chess, Square } from "chess.js";
+import type { Chess } from "chess.js";
 
 type Props = {
   chess: Chess | null;
@@ -38,12 +38,7 @@ export function ChessAnalysisBoard({
           boardOrientation,
           allowDragging: true,
           onPieceDrop: ({ sourceSquare, targetSquare }) => {
-            if (!targetSquare) return false;
-            const from = sourceSquare as Square;
-            const to = targetSquare as Square;
-            const moves = chess.moves({ square: from, verbose: true });
-            const legal = moves.some((m) => m.to === to);
-            if (!legal) return false;
+            if (!targetSquare || sourceSquare === targetSquare) return false;
             return onTryMove(sourceSquare, targetSquare);
           },
           squareStyles,

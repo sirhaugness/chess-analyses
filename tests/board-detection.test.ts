@@ -158,21 +158,6 @@ describe("async-utils", () => {
   });
 });
 
-describe("detectChessboardFromCanvas when OpenCV unavailable", () => {
-  it("returns null without throwing", async () => {
-    vi.resetModules();
-    vi.doMock("../src/lib/opencv-loader", () => ({
-      loadOpenCv: vi.fn().mockResolvedValue(null),
-    }));
-    const { detectChessboardFromCanvas } = await import("../src/lib/board-auto-detect");
-    const canvas = document.createElement("canvas");
-    canvas.width = 100;
-    canvas.height = 100;
-    const result = await detectChessboardFromCanvas(canvas);
-    expect(result).toBeNull();
-  });
-});
-
 describe("BoardCropFlow fallback logic", () => {
   it("uses manual mode for low confidence detection", () => {
     expect(shouldUseAutoCrop(0.4)).toBe(false);

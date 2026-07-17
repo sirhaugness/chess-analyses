@@ -15,15 +15,16 @@ body {
     "Segoe UI",
     Roboto,
     sans-serif;
-  background: #1c1917;
+  background: #312e2b;
 }
 
 .chess-bg {
-  background:
-    linear-gradient(165deg, rgba(28, 25, 23, 0.94) 0%, rgba(41, 37, 36, 0.9) 45%, rgba(28, 25, 23, 0.96) 100%),
-    repeating-conic-gradient(rgba(255, 255, 255, 0.035) 0% 25%, transparent 0% 50%) 0 0 / 48px 48px,
-    repeating-conic-gradient(rgba(0, 0, 0, 0.06) 0% 25%, transparent 0% 50%) 24px 24px / 48px 48px;
-  background-color: #1c1917;
+  background-color: #312e2b;
+  background-image:
+    linear-gradient(rgba(20, 18, 16, 0.55), rgba(20, 18, 16, 0.55)),
+    repeating-conic-gradient(#eeeed2 0 25%, #769656 0 50%);
+  background-size: auto, 56px 56px;
+  background-position: center;
 }
 
 @media (min-width: 768px) {

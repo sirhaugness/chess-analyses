@@ -26,6 +26,7 @@ export function useChessAnalysis(initialBoardOrientation: BoardOrientation) {
     from: string;
     to: string;
   } | null>(null);
+  const [fenHistory, setFenHistory] = useState<string[]>([]);
   const [, bump] = useState(0);
   const refresh = () => bump((n) => n + 1);
 
@@ -51,6 +52,7 @@ export function useChessAnalysis(initialBoardOrientation: BoardOrientation) {
       setStartFen(fen);
       setMoveStack([]);
       setRedoStack([]);
+      setFenHistory([]);
       setPromotionPending(null);
       setBoardOrientation(orient === "white_at_bottom" ? "white" : "black");
       refresh();
@@ -91,16 +93,23 @@ export function useChessAnalysis(initialBoardOrientation: BoardOrientation) {
       if (!chess) return false;
       const piece = chess.get(from as Square);
       if (!piece) return false;
-      if (piece.type === "p") {
-        const rank = to[1];
-        if ((piece.color === "w" && rank === "8") || (piece.color === "b" && rank === "1")) {
-          setPromotionPending({ from, to });
-          return false;
-        }
+
+      const before = chess.fen();
+      chess.remove(from as Square);
+      if (chess.get(to as Square)) {
+        chess.remove(to as Square);
       }
-      return applyMove(from, to);
+      const placed = chess.put(piece, to as Square);
+      if (!placed) return false;
+
+      setFenHistory((history) => [...history, before]);
+      setMoveStack((m) => [...m, { from, to }]);
+      setRedoStack([]);
+      setPromotionPending(null);
+      refresh();
+      return true;
     },
-    [chess, applyMove],
+    [chess],
   );
 
   const completePromotion = useCallback(
@@ -113,17 +122,16 @@ export function useChessAnalysis(initialBoardOrientation: BoardOrientation) {
   );
 
   const undo = useCallback(() => {
-    if (!chess) return;
-    const undone = chess.undo();
-    if (!undone) return;
-    setMoveStack((m) => {
-      const last = m[m.length - 1];
-      if (!last) return m;
-      setRedoStack((r) => [...r, last]);
-      return m.slice(0, -1);
-    });
+    if (!chess || fenHistory.length === 0) return;
+    const previous = fenHistory[fenHistory.length - 1];
+    chess.load(previous);
+    setFenHistory((history) => history.slice(0, -1));
+    setMoveStack((m) => m.slice(0, -1));
+    setRedoStack([]);
+    setPromotionPending(null);
+    setLoadError(null);
     refresh();
-  }, [chess]);
+  }, [chess, fenHistory]);
 
   const redo = useCallback(() => {
     if (!chess) return;
@@ -166,7 +174,7 @@ export function useChessAnalysis(initialBoardOrientation: BoardOrientation) {
     else if (chess.isStalemate()) statusText = "Patt";
     else if (chess.isDraw()) statusText = "Remis";
     else if (chess.isCheck()) statusText = "Sjakk";
-    else statusText = chess.turn() === "w" ? "Hvit i trekket" : "Svart i trekket";
+    else statusText = "Utforsk stillingen";
   }
 
   const flipBoard = useCallback(() => {

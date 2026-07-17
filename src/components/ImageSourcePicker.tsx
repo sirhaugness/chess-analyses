@@ -15,7 +15,7 @@ export function ImageSourcePicker({ onCamera, onGallery, error, busy = false }: 
   return (
     <GlassCard className="mx-4 mt-6 flex flex-col gap-6">
       <header className="text-center">
-        <h1 className="text-2xl font-semibold text-stone-50">Sjakkbrett fra bilde</h1>
+        <h1 className="text-2xl font-semibold text-stone-50">Borhaug Open - analyse</h1>
         <p className="mt-2 text-stone-300">
           Ta bilde av et fysisk sjakkbrett og gjør stillingen digital.
         </p>

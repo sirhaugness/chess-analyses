@@ -22,7 +22,6 @@ type Props = {
   meta: PositionMeta;
   onMetaChange: (meta: PositionMeta) => void;
   onConfirm: () => void;
-  onFreeEdit: () => void;
 };
 
 export function RecognitionReview({
@@ -36,7 +35,6 @@ export function RecognitionReview({
   meta,
   onMetaChange,
   onConfirm,
-  onFreeEdit,
 }: Props) {
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
   const [palettePiece, setPalettePiece] = useState<PlacedPiece | null>(null);
@@ -85,12 +83,18 @@ export function RecognitionReview({
     return true;
   };
 
+  const rotateBoard = () => {
+    onOrientationChange(
+      orientation === "white_at_bottom" ? "black_at_bottom" : "white_at_bottom",
+    );
+  };
+
   return (
     <GlassCard className="mx-4 mt-4 flex flex-col gap-4 pb-28">
       <header>
         <h2 className="text-xl font-semibold text-stone-50">Kontroller stillingen</h2>
         <p className="mt-1 text-sm text-amber-100">
-          Vi er usikre på noen av rutene. Kontroller og rett stillingen før du fortsetter.
+          Rett eventuelle feil før du fortsetter til analysen.
         </p>
       </header>
 
@@ -99,9 +103,6 @@ export function RecognitionReview({
           Sikkerhet: <strong>{confidenceText}</strong> ({Math.round(result.overallConfidence * 100)} %)
         </p>
         <p>Gjenkjente brikker: {pieces.length}</p>
-        {result.orientationGuess === "uncertain" && (
-          <p className="text-amber-200">Orientering er usikker — velg manuelt under.</p>
-        )}
         {result.warnings.map((w) => (
           <p key={w} className="text-stone-300">
             {w}
@@ -109,30 +110,9 @@ export function RecognitionReview({
         ))}
       </div>
 
-      <div className="flex gap-2">
-        <button
-          type="button"
-          className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
-            orientation === "white_at_bottom"
-              ? "border-emerald-400 bg-emerald-950/50 text-emerald-50"
-              : "border-white/25 bg-white/10 text-stone-100"
-          }`}
-          onClick={() => onOrientationChange("white_at_bottom")}
-        >
-          Hvite brikker nærmest meg
-        </button>
-        <button
-          type="button"
-          className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
-            orientation === "black_at_bottom"
-              ? "border-emerald-400 bg-emerald-950/50 text-emerald-50"
-              : "border-white/25 bg-white/10 text-stone-100"
-          }`}
-          onClick={() => onOrientationChange("black_at_bottom")}
-        >
-          Svarte brikker nærmest meg
-        </button>
-      </div>
+      <SecondaryButton className="!w-auto !min-h-10 self-start px-4" onClick={rotateBoard}>
+        Roter brettet
+      </SecondaryButton>
 
       <ReviewChessboard
         pieces={pieces}
@@ -166,35 +146,6 @@ export function RecognitionReview({
         <SecondaryButton className="!w-auto !min-h-10 px-3 py-2 text-sm" onClick={onClearBoard}>
           Tøm brettet
         </SecondaryButton>
-      </div>
-
-      <div className="rounded-xl border border-white/15 bg-black/25 p-3 backdrop-blur-sm">
-        <p className="text-sm font-medium text-stone-50">Hvem er i trekket?</p>
-        <p className="text-xs text-stone-400">Dette kan ikke bestemmes fra bildet.</p>
-        <div className="mt-2 flex gap-2">
-          <button
-            type="button"
-            className={`rounded-lg border px-3 py-2 text-sm ${
-              meta.activeColor === "w"
-                ? "border-emerald-400 bg-emerald-950/50 text-emerald-50"
-                : "border-white/25 bg-white/10 text-stone-100"
-            }`}
-            onClick={() => onMetaChange({ ...meta, activeColor: "w" })}
-          >
-            Hvit i trekket
-          </button>
-          <button
-            type="button"
-            className={`rounded-lg border px-3 py-2 text-sm ${
-              meta.activeColor === "b"
-                ? "border-emerald-400 bg-emerald-950/50 text-emerald-50"
-                : "border-white/25 bg-white/10 text-stone-100"
-            }`}
-            onClick={() => onMetaChange({ ...meta, activeColor: "b" })}
-          >
-            Svart i trekket
-          </button>
-        </div>
       </div>
 
       <button
@@ -237,12 +188,9 @@ export function RecognitionReview({
         </GlassAlert>
       ))}
 
-      <div className="flex flex-col gap-2">
-        <PrimaryButton disabled={!canContinue} onClick={onConfirm}>
-          Start analyse
-        </PrimaryButton>
-        <SecondaryButton onClick={onFreeEdit}>Fri redigering (tidligere stilling)</SecondaryButton>
-      </div>
+      <PrimaryButton disabled={!canContinue} onClick={onConfirm}>
+        Start analyse
+      </PrimaryButton>
     </GlassCard>
   );
 }
