@@ -24,7 +24,7 @@ export function AppShell({ children }: ShellProps) {
   return (
     <div className="relative min-h-dvh overflow-x-hidden">
       <div className="chess-bg pointer-events-none fixed inset-0 -z-10" aria-hidden />
-      <div className="relative z-0 mx-auto w-full max-w-lg pb-8">{children}</div>
+      <div className="relative z-0 mx-auto w-full max-w-lg pb-8 [&:has(.home-hero)]:pb-0">{children}</div>
     </div>
   );
 }
