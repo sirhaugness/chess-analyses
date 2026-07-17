@@ -34,6 +34,7 @@ export function PositionEditor({
   const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
 
   const issues = validatePositionForAnalysis(editor.pieces, meta.activeColor);
+  const hasErrors = !canEnterAnalysisMode(issues);
 
   return (
     <GlassCard className="mx-4 mt-4 flex flex-col gap-4 pb-28">
@@ -90,11 +91,8 @@ export function PositionEditor({
       ))}
 
       <div className="flex flex-col gap-2">
-        <PrimaryButton
-          disabled={!canEnterAnalysisMode(issues)}
-          onClick={() => onSaveAsAnalysisStart(editor.pieces)}
-        >
-          Lagre som analyseutgangspunkt
+        <PrimaryButton onClick={() => onSaveAsAnalysisStart(editor.pieces)}>
+          {hasErrors ? "Lagre og start analyse likevel" : "Lagre som analyseutgangspunkt"}
         </PrimaryButton>
         <SecondaryButton onClick={onCancel}>Avbryt uten å lagre</SecondaryButton>
         <button type="button" className="min-h-11 text-sm text-stone-300 underline" onClick={onRestorePhoto}>

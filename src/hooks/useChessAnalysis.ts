@@ -23,32 +23,37 @@ export function useChessAnalysis(initialBoardOrientation: BoardOrientation) {
   const [redoMoveStack, setRedoMoveStack] = useState<MoveRecord[]>([]);
   const [pieceHistory, setPieceHistory] = useState<PlacedPiece[][]>([]);
   const [pieceRedo, setPieceRedo] = useState<PlacedPiece[][]>([]);
+  const [positionLoaded, setPositionLoaded] = useState(false);
+
+  const loadNewStartFromPieces = useCallback(
+    (nextPieces: PlacedPiece[], orient: BoardOrientation): string | null => {
+      setLoadError(null);
+      setStartPieces(nextPieces);
+      setPieces(nextPieces);
+      setMoveStack([]);
+      setRedoMoveStack([]);
+      setPieceHistory([]);
+      setPieceRedo([]);
+      setBoardOrientation(orient === "white_at_bottom" ? "white" : "black");
+      setPositionLoaded(true);
+      return null;
+    },
+    [],
+  );
 
   const loadNewStart = useCallback(
     (fen: string, orient: BoardOrientation): string | null => {
       setLoadError(null);
       try {
         const parsed = fenToPieces(fen);
-        if (parsed.length === 0) {
-          const message = "Ingen sjakkstilling er lastet.";
-          setLoadError(message);
-          return message;
-        }
-        setStartPieces(parsed);
-        setPieces(parsed);
-        setMoveStack([]);
-        setRedoMoveStack([]);
-        setPieceHistory([]);
-        setPieceRedo([]);
-        setBoardOrientation(orient === "white_at_bottom" ? "white" : "black");
-        return null;
+        return loadNewStartFromPieces(parsed, orient);
       } catch {
         const message = "Ugyldig sjakkstilling (FEN kan ikke lastes).";
         setLoadError(message);
         return message;
       }
     },
-    [],
+    [loadNewStartFromPieces],
   );
 
   const resetToStart = useCallback(() => {
@@ -114,7 +119,7 @@ export function useChessAnalysis(initialBoardOrientation: BoardOrientation) {
 
   return {
     chess: null,
-    isReady: startPieces.length > 0,
+    isReady: positionLoaded,
     loadError,
     fen,
     moveList,
@@ -127,6 +132,7 @@ export function useChessAnalysis(initialBoardOrientation: BoardOrientation) {
     redo,
     resetToStart,
     loadNewStart,
+    loadNewStartFromPieces,
     flipBoard,
     canUndo: pieceHistory.length > 0,
     canRedo: pieceRedo.length > 0,

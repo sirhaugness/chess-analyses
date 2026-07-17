@@ -57,7 +57,7 @@ export function RecognitionReview({
         : "Lav";
 
   const issues = validatePositionForAnalysis(pieces, meta.activeColor);
-  const canContinue = canEnterAnalysisMode(issues);
+  const hasErrors = !canEnterAnalysisMode(issues);
 
   const handleSquareClick = (square: string) => {
     if (palettePiece) {
@@ -94,7 +94,7 @@ export function RecognitionReview({
       <header>
         <h2 className="text-xl font-semibold text-stone-50">Kontroller stillingen</h2>
         <p className="mt-1 text-sm text-amber-100">
-          Rett eventuelle feil før du fortsetter til analysen.
+          Rett eventuelle feil, eller fortsett til analysen likevel.
         </p>
       </header>
 
@@ -188,8 +188,8 @@ export function RecognitionReview({
         </GlassAlert>
       ))}
 
-      <PrimaryButton disabled={!canContinue} onClick={onConfirm}>
-        Start analyse
+      <PrimaryButton onClick={onConfirm}>
+        {hasErrors ? "Start analyse likevel" : "Start analyse"}
       </PrimaryButton>
     </GlassCard>
   );

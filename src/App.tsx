@@ -8,7 +8,6 @@ import { PositionEditor } from "./components/PositionEditor";
 import { analyzeBoardImage } from "./lib/api";
 import { prepareImageFromFile, validateImageFile } from "./lib/image-processing";
 import {
-  buildFen,
   defaultMeta,
   copyFenToClipboard,
 } from "./lib/chess-position";
@@ -59,23 +58,27 @@ export default function App() {
 
   const analysis = useChessAnalysis(orientation);
 
-  const startAnalysis = useCallback(
+  const enterAnalysis = useCallback(
     (pieces: PlacedPiece[], orient: BoardOrientation = orientation) => {
-      const issues = validatePositionForAnalysis(pieces, meta.activeColor);
-      if (!canEnterAnalysisMode(issues)) {
-        setAnalysisError("Stillingen er ugyldig og kan ikke brukes i analysemodus.");
-        return false;
-      }
-      const fen = buildFen(pieces, meta);
-      const err = analysis.loadNewStart(fen, orient);
+      const err = analysis.loadNewStartFromPieces(pieces, orient);
       if (err) {
         setAnalysisError(err);
         return false;
       }
+      setConfirmedPhotoPieces(pieces);
+      setAnalysisStartPieces(pieces);
       setAnalysisError(null);
       return true;
     },
-    [analysis, meta, orientation],
+    [analysis, orientation],
+  );
+
+  const hasPositionErrors = useCallback(
+    (pieces: PlacedPiece[]) => {
+      const issues = validatePositionForAnalysis(pieces, meta.activeColor);
+      return !canEnterAnalysisMode(issues);
+    },
+    [meta.activeColor],
   );
 
   const handleFile = useCallback(async (file: File) => {
@@ -136,12 +139,13 @@ export default function App() {
     setConfirmedPhotoPieces(pieces);
     setAnalysisStartPieces(pieces);
 
-    if (!startAnalysis(pieces, orient)) {
+    if (hasPositionErrors(pieces)) {
       setPhase("review");
       return;
     }
+    if (!enterAnalysis(pieces, orient)) return;
     setPhase("analysis");
-  }, [croppedImage, startAnalysis]);
+  }, [croppedImage, enterAnalysis, hasPositionErrors]);
 
   const restoreRecognition = () => {
     if (!rawRecognition) return;
@@ -156,9 +160,7 @@ export default function App() {
   };
 
   const confirmReview = () => {
-    setConfirmedPhotoPieces(recognizedPieces);
-    setAnalysisStartPieces(recognizedPieces);
-    if (!startAnalysis(recognizedPieces)) return;
+    if (!enterAnalysis(recognizedPieces, orientation)) return;
     setPhase("analysis");
   };
 
@@ -222,15 +224,13 @@ export default function App() {
           meta={meta}
           photoPieces={confirmedPhotoPieces.length ? confirmedPhotoPieces : recognizedPieces}
           onSaveAsAnalysisStart={(pieces) => {
-            setAnalysisStartPieces(pieces);
-            if (!startAnalysis(pieces)) return;
+            if (!enterAnalysis(pieces, orientation)) return;
             setPhase("analysis");
           }}
           onCancel={() => setPhase(confirmedPhotoPieces.length ? "analysis" : "review")}
           onRestorePhoto={() => {
             const photo = confirmedPhotoPieces.length ? confirmedPhotoPieces : recognizedPieces;
-            setAnalysisStartPieces(photo);
-            if (!startAnalysis(photo)) return;
+            if (!enterAnalysis(photo, orientation)) return;
             setPhase("analysis");
           }}
         />
@@ -287,9 +287,7 @@ export default function App() {
               </BoardControls.Secondary>
               <BoardControls.Secondary
                 onClick={() => {
-                  const photo = confirmedPhotoPieces;
-                  setAnalysisStartPieces(photo);
-                  startAnalysis(photo);
+                  void enterAnalysis(confirmedPhotoPieces, orientation);
                 }}
               >
                 Tilbake til bildestillingen

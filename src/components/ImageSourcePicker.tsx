@@ -89,6 +89,9 @@ export function ImageSourcePicker({ onCamera, onGallery, error, busy = false }: 
 
       <div className="space-y-2 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-1">
         {error && <GlassAlert tone="red">{error}</GlassAlert>}
+        <p className="text-center text-sm leading-snug text-stone-200 sm:text-base">
+          Ta bilde av en sjakkstilling og få den opp i et analysebrett
+        </p>
         <p className="text-center text-[0.65rem] leading-snug text-stone-400 sm:text-xs">
           Bildet sendes til OpenAI for å lese av sjakkstillingen. Denne appen lagrer ikke bildet.
         </p>
