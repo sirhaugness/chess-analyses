@@ -1,20 +1,20 @@
-import type { OrderedCorners, Point } from "./board-geometry";
+import type { OrderedCorners } from "./board-geometry";
 import { orderCorners, scoreQuadCandidate } from "./board-geometry";
+import { yieldToMain } from "./async-utils";
 import { loadOpenCv } from "./opencv-loader";
-import { loadOrientedImageCanvas } from "./perspective-export";
 
 export type BoardDetectionResult = {
   corners: OrderedCorners;
   confidence: number;
 };
 
-const WORK_MAX = 800;
+const WORK_MAX = 600;
 
 function extractContourPoints(contour: {
   rows: number;
   intPtr: (row: number, col: number) => number;
-}): Point[] {
-  const points: Point[] = [];
+}): { x: number; y: number }[] {
+  const points: { x: number; y: number }[] = [];
   for (let i = 0; i < contour.rows; i++) {
     points.push({ x: contour.intPtr(i, 0), y: contour.intPtr(i, 1) });
   }
@@ -80,16 +80,15 @@ export function detectBoardWithOpenCv(
   return best;
 }
 
-export async function detectChessboard(
-  imageSrc: string,
+export async function detectChessboardFromCanvas(
+  canvas: HTMLCanvasElement,
 ): Promise<BoardDetectionResult | null> {
   try {
+    await yieldToMain();
     const cv = await loadOpenCv();
     if (!cv) return null;
-    const canvas = await loadOrientedImageCanvas(imageSrc);
-    const result = detectBoardWithOpenCv(cv, canvas);
-    if (!result) return null;
-    return result;
+    await yieldToMain();
+    return detectBoardWithOpenCv(cv, canvas);
   } catch {
     return null;
   }

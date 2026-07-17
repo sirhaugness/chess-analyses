@@ -9,7 +9,9 @@ import {
   computeHomography,
   estimateDataUrlBytes,
   warpPerspectiveFromImageData,
+  warpPerspectiveFromImageDataAsync,
 } from "../src/lib/perspective-export";
+import { DETECTION_TIMEOUT_MS, withTimeout, yieldToMain } from "../src/lib/async-utils";
 
 describe("orderCorners", () => {
   it("sorts four corners into topLeft, topRight, bottomRight, bottomLeft", () => {
@@ -85,6 +87,25 @@ describe("warpPerspectiveFromImageData", () => {
     expect(out.data[0]).toBeGreaterThan(0);
   });
 
+  it("async warp matches sync warp for small images", async () => {
+    const source = new ImageData(8, 8);
+    for (let i = 0; i < source.data.length; i += 4) {
+      source.data[i] = 100;
+      source.data[i + 3] = 255;
+    }
+    const corners = orderCorners([
+      { x: 0, y: 0 },
+      { x: 7, y: 0 },
+      { x: 7, y: 7 },
+      { x: 0, y: 7 },
+    ]);
+    const sync = warpPerspectiveFromImageData(source, corners, 4);
+    const asyncOut = await warpPerspectiveFromImageDataAsync(source, corners, 4);
+    expect(asyncOut.width).toBe(sync.width);
+    expect(asyncOut.height).toBe(sync.height);
+    expect(asyncOut.data[0]).toBe(sync.data[0]);
+  });
+
   it("computes homography for square mapping", () => {
     const h = computeHomography(
       [
@@ -112,14 +133,42 @@ describe("export compression", () => {
   });
 });
 
-describe("detectChessboard when OpenCV unavailable", () => {
+describe("async-utils", () => {
+  it("withTimeout resolves before deadline", async () => {
+    const result = await withTimeout(Promise.resolve(42), 100);
+    expect(result).toBe(42);
+  });
+
+  it("withTimeout returns timeout when promise is slow", async () => {
+    vi.useFakeTimers();
+    const slow = new Promise<number>((resolve) => setTimeout(() => resolve(1), 5000));
+    const pending = withTimeout(slow, 50);
+    vi.advanceTimersByTime(60);
+    await expect(pending).resolves.toBe("timeout");
+    vi.useRealTimers();
+  });
+
+  it("DETECTION_TIMEOUT_MS is within expected range", () => {
+    expect(DETECTION_TIMEOUT_MS).toBeGreaterThanOrEqual(3000);
+    expect(DETECTION_TIMEOUT_MS).toBeLessThanOrEqual(5000);
+  });
+
+  it("yieldToMain resolves", async () => {
+    await expect(yieldToMain()).resolves.toBeUndefined();
+  });
+});
+
+describe("detectChessboardFromCanvas when OpenCV unavailable", () => {
   it("returns null without throwing", async () => {
     vi.resetModules();
     vi.doMock("../src/lib/opencv-loader", () => ({
       loadOpenCv: vi.fn().mockResolvedValue(null),
     }));
-    const { detectChessboard } = await import("../src/lib/board-auto-detect");
-    const result = await detectChessboard("data:image/jpeg;base64,abcd");
+    const { detectChessboardFromCanvas } = await import("../src/lib/board-auto-detect");
+    const canvas = document.createElement("canvas");
+    canvas.width = 100;
+    canvas.height = 100;
+    const result = await detectChessboardFromCanvas(canvas);
     expect(result).toBeNull();
   });
 });
@@ -127,5 +176,9 @@ describe("detectChessboard when OpenCV unavailable", () => {
 describe("BoardCropFlow fallback logic", () => {
   it("uses manual mode for low confidence detection", () => {
     expect(shouldUseAutoCrop(0.4)).toBe(false);
+  });
+
+  it("timeout constant supports manual fallback window", () => {
+    expect(DETECTION_TIMEOUT_MS).toBe(4000);
   });
 });

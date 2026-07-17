@@ -98,6 +98,46 @@ function sampleBilinear(data: Uint8ClampedArray, w: number, h: number, x: number
   return out;
 }
 
+import { yieldToMain } from "./async-utils";
+
+export async function warpPerspectiveFromImageDataAsync(
+  source: ImageData,
+  corners: OrderedCorners,
+  outputSize: number,
+  rowsPerChunk = 16,
+): Promise<ImageData> {
+  const srcPts = orderedCornersToArray(corners);
+  const dstPts: Point[] = [
+    { x: 0, y: 0 },
+    { x: outputSize - 1, y: 0 },
+    { x: outputSize - 1, y: outputSize - 1 },
+    { x: 0, y: outputSize - 1 },
+  ];
+  const h = computeHomography(srcPts, dstPts);
+  if (!h) throw new Error("Kunne ikke beregne perspektivtransformasjon.");
+
+  const out = new ImageData(outputSize, outputSize);
+  for (let y = 0; y < outputSize; y++) {
+    for (let x = 0; x < outputSize; x++) {
+      const src = applyHomography(h, x, y);
+      const di = (y * outputSize + x) * 4;
+      if (!src || src.x < 0 || src.y < 0 || src.x >= source.width || src.y >= source.height) {
+        out.data[di + 3] = 255;
+        continue;
+      }
+      const [r, g, b, a] = sampleBilinear(source.data, source.width, source.height, src.x, src.y);
+      out.data[di] = r;
+      out.data[di + 1] = g;
+      out.data[di + 2] = b;
+      out.data[di + 3] = a;
+    }
+    if (y > 0 && y % rowsPerChunk === 0) {
+      await yieldToMain();
+    }
+  }
+  return out;
+}
+
 export function warpPerspectiveFromImageData(
   source: ImageData,
   corners: OrderedCorners,
@@ -119,9 +159,6 @@ export function warpPerspectiveFromImageData(
       const src = applyHomography(h, x, y);
       const di = (y * outputSize + x) * 4;
       if (!src || src.x < 0 || src.y < 0 || src.x >= source.width || src.y >= source.height) {
-        out.data[di] = 0;
-        out.data[di + 1] = 0;
-        out.data[di + 2] = 0;
         out.data[di + 3] = 255;
         continue;
       }
@@ -182,12 +219,13 @@ export async function exportBoardFromCorners(
   imageSrc: string,
   corners: OrderedCorners,
   outputSize = EXPORT_MAX_SIZE,
+  sourceCanvas?: HTMLCanvasElement,
 ): Promise<ProcessedImage> {
-  const sourceCanvas = await loadOrientedImageCanvas(imageSrc);
-  const ctx = sourceCanvas.getContext("2d");
+  const sourceCanvasResolved = sourceCanvas ?? (await loadOrientedImageCanvas(imageSrc));
+  const ctx = sourceCanvasResolved.getContext("2d");
   if (!ctx) throw new Error("Canvas ikke tilgjengelig.");
-  const sourceData = ctx.getImageData(0, 0, sourceCanvas.width, sourceCanvas.height);
-  const warped = warpPerspectiveFromImageData(sourceData, corners, outputSize);
+  const sourceData = ctx.getImageData(0, 0, sourceCanvasResolved.width, sourceCanvasResolved.height);
+  const warped = await warpPerspectiveFromImageDataAsync(sourceData, corners, outputSize);
   const outCanvas = document.createElement("canvas");
   outCanvas.width = outputSize;
   outCanvas.height = outputSize;

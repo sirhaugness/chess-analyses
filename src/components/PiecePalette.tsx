@@ -18,7 +18,7 @@ type Props = {
 export function PiecePalette({ selected, onSelect, onClearSelection }: Props) {
   const renderRow = (color: "w" | "b", title: string) => (
     <div>
-      <p className="mb-1 text-xs font-medium text-stone-600">{title}</p>
+      <p className="mb-1 text-xs font-medium text-stone-300">{title}</p>
       <div className="flex flex-wrap gap-2">
         {WHITE.map((p) => {
           const piece: PlacedPiece = { square: "a1", color, type: p.type };
@@ -29,7 +29,9 @@ export function PiecePalette({ selected, onSelect, onClearSelection }: Props) {
               key={`${color}-${p.type}`}
               type="button"
               className={`min-h-10 min-w-10 rounded-lg border px-3 text-sm font-semibold ${
-                active ? "border-emerald-600 bg-emerald-50" : "border-stone-300 bg-white"
+                active
+                  ? "border-emerald-400 bg-emerald-950/50 text-emerald-50"
+                  : "border-white/25 bg-white/10 text-stone-100"
               }`}
               onClick={() => onSelect(piece)}
             >
@@ -42,10 +44,10 @@ export function PiecePalette({ selected, onSelect, onClearSelection }: Props) {
   );
 
   return (
-    <div className="rounded-xl bg-white p-3 shadow-sm">
+    <div className="rounded-xl border border-white/15 bg-black/25 p-3 backdrop-blur-sm">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-medium">Brikkepalett</span>
-        <button type="button" className="text-xs text-stone-600 underline" onClick={onClearSelection}>
+        <span className="text-sm font-medium text-stone-50">Brikkepalett</span>
+        <button type="button" className="text-xs text-stone-300 underline" onClick={onClearSelection}>
           Fjern valg
         </button>
       </div>

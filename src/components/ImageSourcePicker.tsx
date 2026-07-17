@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { GlassAlert, GlassCard, PrimaryButton, SecondaryButton } from "./AppShell";
 
 type Props = {
   onCamera: (file: File) => void;
@@ -11,29 +12,17 @@ export function ImageSourcePicker({ onCamera, onGallery, error }: Props) {
   const galleryRef = useRef<HTMLInputElement>(null);
 
   return (
-    <section className="mx-auto flex max-w-lg flex-col gap-6 px-4 py-8">
+    <GlassCard className="mx-4 mt-6 flex flex-col gap-6">
       <header className="text-center">
-        <h1 className="text-2xl font-semibold text-stone-900">Sjakkbrett fra bilde</h1>
-        <p className="mt-2 text-stone-600">
+        <h1 className="text-2xl font-semibold text-stone-50">Sjakkbrett fra bilde</h1>
+        <p className="mt-2 text-stone-300">
           Ta bilde av et fysisk sjakkbrett og gjør stillingen digital.
         </p>
       </header>
 
       <div className="flex flex-col gap-3">
-        <button
-          type="button"
-          className="min-h-12 rounded-xl bg-emerald-700 px-6 py-3 text-lg font-medium text-white"
-          onClick={() => cameraRef.current?.click()}
-        >
-          Ta bilde
-        </button>
-        <button
-          type="button"
-          className="min-h-12 rounded-xl border border-stone-300 bg-white px-6 py-3 text-lg font-medium text-stone-800"
-          onClick={() => galleryRef.current?.click()}
-        >
-          Velg bilde
-        </button>
+        <PrimaryButton onClick={() => cameraRef.current?.click()}>Ta bilde</PrimaryButton>
+        <SecondaryButton onClick={() => galleryRef.current?.click()}>Velg bilde</SecondaryButton>
       </div>
 
       <input
@@ -60,7 +49,7 @@ export function ImageSourcePicker({ onCamera, onGallery, error }: Props) {
         }}
       />
 
-      <ul className="rounded-xl bg-white p-4 text-sm text-stone-600 shadow-sm">
+      <ul className="rounded-xl border border-white/15 bg-black/20 p-4 text-sm text-stone-300">
         <li>Ta bildet mest mulig rett ovenfra.</li>
         <li>Sørg for at hele brettet er synlig.</li>
         <li>Unngå hender og andre gjenstander.</li>
@@ -68,16 +57,11 @@ export function ImageSourcePicker({ onCamera, onGallery, error }: Props) {
         <li>Sørg for tydelig kontrast mellom brikker og brett.</li>
       </ul>
 
-      <p className="text-center text-xs text-stone-500">
-        Bildet sendes til OpenAI for å lese av sjakkstillingen. Denne appen lagrer ikke
-        bildet.
+      <p className="text-center text-xs text-stone-400">
+        Bildet sendes til OpenAI for å lese av sjakkstillingen. Denne appen lagrer ikke bildet.
       </p>
 
-      {error && (
-        <p className="text-center text-sm text-red-700" role="alert">
-          {error}
-        </p>
-      )}
-    </section>
+      {error && <GlassAlert tone="red">{error}</GlassAlert>}
+    </GlassCard>
   );
 }

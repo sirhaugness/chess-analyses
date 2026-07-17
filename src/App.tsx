@@ -22,6 +22,7 @@ import { MoveHistory } from "./components/MoveHistory";
 import { PromotionDialog } from "./components/PromotionDialog";
 import { BoardControls } from "./components/BoardControls";
 import { canEnterAnalysisMode, validatePositionForAnalysis } from "./lib/position-validation";
+import { AppShell, GlassAlert, GlassCard, PrimaryButton } from "./components/AppShell";
 
 function mapApiError(code: string, message: string): string {
   const map: Record<string, string> = {
@@ -152,7 +153,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-dvh bg-stone-100 text-stone-900">
+    <AppShell>
       {phase === "home" && (
         <ImageSourcePicker
           onCamera={handleFile}
@@ -164,25 +165,24 @@ export default function App() {
       {phase === "crop" && rawImage && (
         <>
           {croppedImage && (
-            <section className="mx-auto max-w-lg px-4 pt-6">
+            <GlassCard className="mx-4 mt-6">
               <img
                 src={croppedImage}
                 alt="Beskjært sjakkbrett"
-                className="mx-auto mb-2 max-h-40 rounded-lg border"
+                className="mx-auto mb-2 max-h-40 rounded-lg border border-white/20"
               />
               {cropMeta && (
-                <p className="text-center text-xs text-stone-500">~{cropMeta.kb} KB</p>
+                <p className="text-center text-xs text-stone-400">~{cropMeta.kb} KB</p>
               )}
-              {analyzeError && <p className="mt-2 text-sm text-red-700">{analyzeError}</p>}
-              <button
-                type="button"
-                className="mt-4 min-h-12 w-full rounded-xl bg-emerald-700 font-medium text-white disabled:opacity-50"
-                disabled={!croppedImage}
-                onClick={() => void runAnalyze()}
-              >
+              {analyzeError && (
+                <div className="mt-3">
+                  <GlassAlert tone="red">{analyzeError}</GlassAlert>
+                </div>
+              )}
+              <PrimaryButton className="mt-4" disabled={!croppedImage} onClick={() => void runAnalyze()}>
                 Analyser brettet
-              </button>
-            </section>
+              </PrimaryButton>
+            </GlassCard>
           )}
           {!croppedImage && (
             <BoardCropFlow
@@ -201,10 +201,10 @@ export default function App() {
             />
           )}
           {croppedImage && (
-            <div className="mx-auto max-w-lg px-4 pb-8">
+            <div className="mx-4 pb-8 text-center">
               <button
                 type="button"
-                className="mt-2 text-sm text-stone-600 underline"
+                className="mt-2 text-sm text-stone-300 underline"
                 onClick={() => {
                   setCroppedImage(null);
                   setCropMeta(null);
@@ -257,19 +257,17 @@ export default function App() {
       )}
 
       {phase === "analysis" && (
-        <section className="mx-auto flex max-w-lg flex-col gap-3 px-4 py-4 pb-36">
+        <GlassCard className="mx-4 mt-4 flex flex-col gap-3 pb-36">
           {(analysisError || analysis.loadError) && (
-            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900" role="alert">
-              {analysisError ?? analysis.loadError}
-            </p>
+            <GlassAlert tone="red">{analysisError ?? analysis.loadError}</GlassAlert>
           )}
           {!analysis.isReady ? (
-            <p className="text-center text-sm text-stone-600">
+            <p className="text-center text-sm text-stone-300">
               Ingen gyldig sjakkstilling er lastet. Gå tilbake og kontroller stillingen.
             </p>
           ) : (
             <>
-          <p className="text-center font-medium">{analysis.statusText}</p>
+          <p className="text-center font-medium text-stone-50">{analysis.statusText}</p>
           <ChessAnalysisBoard
             chess={analysis.chess}
             boardOrientation={analysis.boardOrientation}
@@ -278,13 +276,13 @@ export default function App() {
           <MoveHistory moves={analysis.moveList} />
           <button
             type="button"
-            className="text-sm text-stone-600 underline"
+            className="text-sm text-stone-300 underline"
             onClick={() => setFenOpen((v) => !v)}
           >
             Stillingsdata {fenOpen ? "▲" : "▼"}
           </button>
           {fenOpen && (
-            <div className="rounded-xl bg-white p-3 text-xs break-all">
+            <div className="rounded-xl border border-white/15 bg-black/20 p-3 text-xs break-all text-stone-200">
               <p>{analysis.fen}</p>
               <button
                 type="button"
@@ -343,8 +341,8 @@ export default function App() {
           </BoardControls>
             </>
           )}
-        </section>
+        </GlassCard>
       )}
-    </div>
+    </AppShell>
   );
 }

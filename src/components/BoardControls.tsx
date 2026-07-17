@@ -8,9 +8,9 @@ type Props = {
 export function BoardControls({ children, className = "" }: Props) {
   return (
     <div
-      className={`sticky bottom-0 z-10 -mx-4 border-t border-stone-200 bg-stone-50/95 px-4 py-3 backdrop-blur ${className}`}
+      className={`sticky bottom-0 z-10 -mx-4 border-t border-white/20 bg-stone-950/80 px-4 py-3 backdrop-blur-lg ${className}`}
     >
-      <div className="flex max-w-lg mx-auto flex-col gap-2">{children}</div>
+      <div className="mx-auto flex max-w-lg flex-col gap-2">{children}</div>
     </div>
   );
 }
@@ -29,8 +29,8 @@ function Btn({
   const base = "min-h-11 rounded-xl px-4 py-2 text-sm font-medium disabled:opacity-50";
   const styles =
     variant === "primary"
-      ? "bg-emerald-700 text-white"
-      : "border border-stone-300 bg-white text-stone-800";
+      ? "bg-emerald-600 text-white shadow-lg shadow-emerald-900/30"
+      : "border border-white/25 bg-white/10 text-stone-100 backdrop-blur-sm";
   return (
     <button type="button" className={`${base} ${styles}`} onClick={onClick} disabled={disabled}>
       {children}

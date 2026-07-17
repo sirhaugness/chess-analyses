@@ -5,6 +5,7 @@ import { imageCellToSquare } from "../lib/image-grid-mapping";
 import { piecesToMapUpdate } from "../hooks/useChessAnalysis";
 import { ReviewChessboard } from "./ReviewChessboard";
 import { PiecePalette } from "./PiecePalette";
+import { GlassAlert, GlassCard, PrimaryButton, SecondaryButton } from "./AppShell";
 import {
   canEnterAnalysisMode,
   validatePositionForAnalysis,
@@ -85,24 +86,24 @@ export function RecognitionReview({
   };
 
   return (
-    <section className="mx-auto flex max-w-lg flex-col gap-4 px-4 py-6 pb-28">
+    <GlassCard className="mx-4 mt-4 flex flex-col gap-4 pb-28">
       <header>
-        <h2 className="text-xl font-semibold">Kontroller stillingen</h2>
-        <p className="mt-1 text-sm text-amber-900">
+        <h2 className="text-xl font-semibold text-stone-50">Kontroller stillingen</h2>
+        <p className="mt-1 text-sm text-amber-100">
           Vi er usikre på noen av rutene. Kontroller og rett stillingen før du fortsetter.
         </p>
       </header>
 
-      <div className="rounded-xl bg-white p-3 text-sm shadow-sm">
+      <div className="rounded-xl border border-white/15 bg-black/25 p-3 text-sm text-stone-100 backdrop-blur-sm">
         <p>
           Sikkerhet: <strong>{confidenceText}</strong> ({Math.round(result.overallConfidence * 100)} %)
         </p>
         <p>Gjenkjente brikker: {pieces.length}</p>
         {result.orientationGuess === "uncertain" && (
-          <p className="text-amber-800">Orientering er usikker — velg manuelt under.</p>
+          <p className="text-amber-200">Orientering er usikker — velg manuelt under.</p>
         )}
         {result.warnings.map((w) => (
-          <p key={w} className="text-stone-600">
+          <p key={w} className="text-stone-300">
             {w}
           </p>
         ))}
@@ -112,7 +113,9 @@ export function RecognitionReview({
         <button
           type="button"
           className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
-            orientation === "white_at_bottom" ? "border-emerald-600 bg-emerald-50" : "border-stone-300"
+            orientation === "white_at_bottom"
+              ? "border-emerald-400 bg-emerald-950/50 text-emerald-50"
+              : "border-white/25 bg-white/10 text-stone-100"
           }`}
           onClick={() => onOrientationChange("white_at_bottom")}
         >
@@ -121,7 +124,9 @@ export function RecognitionReview({
         <button
           type="button"
           className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
-            orientation === "black_at_bottom" ? "border-emerald-600 bg-emerald-50" : "border-stone-300"
+            orientation === "black_at_bottom"
+              ? "border-emerald-400 bg-emerald-950/50 text-emerald-50"
+              : "border-white/25 bg-white/10 text-stone-100"
           }`}
           onClick={() => onOrientationChange("black_at_bottom")}
         >
@@ -145,12 +150,11 @@ export function RecognitionReview({
       />
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" className="rounded-lg border px-3 py-2 text-sm" onClick={onRestoreRecognition}>
+        <SecondaryButton className="!w-auto !min-h-10 px-3 py-2 text-sm" onClick={onRestoreRecognition}>
           Gjenopprett gjenkjenning
-        </button>
-        <button
-          type="button"
-          className="rounded-lg border px-3 py-2 text-sm"
+        </SecondaryButton>
+        <SecondaryButton
+          className="!w-auto !min-h-10 px-3 py-2 text-sm"
           onClick={() => {
             if (selectedSquare) {
               onPiecesChange(piecesToMapUpdate(pieces, selectedSquare, null));
@@ -158,26 +162,34 @@ export function RecognitionReview({
           }}
         >
           Fjern brikke på valgt rute
-        </button>
-        <button type="button" className="rounded-lg border px-3 py-2 text-sm" onClick={onClearBoard}>
+        </SecondaryButton>
+        <SecondaryButton className="!w-auto !min-h-10 px-3 py-2 text-sm" onClick={onClearBoard}>
           Tøm brettet
-        </button>
+        </SecondaryButton>
       </div>
 
-      <div className="rounded-xl bg-white p-3 shadow-sm">
-        <p className="text-sm font-medium">Hvem er i trekket?</p>
-        <p className="text-xs text-stone-500">Dette kan ikke bestemmes fra bildet.</p>
+      <div className="rounded-xl border border-white/15 bg-black/25 p-3 backdrop-blur-sm">
+        <p className="text-sm font-medium text-stone-50">Hvem er i trekket?</p>
+        <p className="text-xs text-stone-400">Dette kan ikke bestemmes fra bildet.</p>
         <div className="mt-2 flex gap-2">
           <button
             type="button"
-            className={`rounded-lg border px-3 py-2 text-sm ${meta.activeColor === "w" ? "border-emerald-600" : ""}`}
+            className={`rounded-lg border px-3 py-2 text-sm ${
+              meta.activeColor === "w"
+                ? "border-emerald-400 bg-emerald-950/50 text-emerald-50"
+                : "border-white/25 bg-white/10 text-stone-100"
+            }`}
             onClick={() => onMetaChange({ ...meta, activeColor: "w" })}
           >
             Hvit i trekket
           </button>
           <button
             type="button"
-            className={`rounded-lg border px-3 py-2 text-sm ${meta.activeColor === "b" ? "border-emerald-600" : ""}`}
+            className={`rounded-lg border px-3 py-2 text-sm ${
+              meta.activeColor === "b"
+                ? "border-emerald-400 bg-emerald-950/50 text-emerald-50"
+                : "border-white/25 bg-white/10 text-stone-100"
+            }`}
             onClick={() => onMetaChange({ ...meta, activeColor: "b" })}
           >
             Svart i trekket
@@ -187,13 +199,13 @@ export function RecognitionReview({
 
       <button
         type="button"
-        className="text-left text-sm font-medium text-stone-700"
+        className="text-left text-sm font-medium text-stone-300"
         onClick={() => setAdvancedOpen((v) => !v)}
       >
         Avanserte stillingsvalg {advancedOpen ? "▲" : "▼"}
       </button>
       {advancedOpen && (
-        <div className="grid grid-cols-2 gap-2 text-sm">
+        <div className="grid grid-cols-2 gap-2 text-sm text-stone-200">
           {(
             [
               ["whiteKingSide", "Hvit kan rokere kort"],
@@ -220,24 +232,17 @@ export function RecognitionReview({
       )}
 
       {issues.map((i) => (
-        <p key={i.message} className={i.level === "error" ? "text-red-700 text-sm" : "text-amber-800 text-sm"}>
+        <GlassAlert key={i.message} tone={i.level === "error" ? "red" : "amber"}>
           {i.message}
-        </p>
+        </GlassAlert>
       ))}
 
       <div className="flex flex-col gap-2">
-        <button
-          type="button"
-          disabled={!canContinue}
-          className="min-h-12 rounded-xl bg-emerald-700 text-white font-medium disabled:opacity-50"
-          onClick={onConfirm}
-        >
+        <PrimaryButton disabled={!canContinue} onClick={onConfirm}>
           Start analyse
-        </button>
-        <button type="button" className="min-h-11 rounded-xl border border-stone-300" onClick={onFreeEdit}>
-          Fri redigering (tidligere stilling)
-        </button>
+        </PrimaryButton>
+        <SecondaryButton onClick={onFreeEdit}>Fri redigering (tidligere stilling)</SecondaryButton>
       </div>
-    </section>
+    </GlassCard>
   );
 }
