@@ -17,7 +17,6 @@ describe("OpenAI worker integration", () => {
       {
         OPENAI_API_KEY: "",
         OPENAI_MODEL: "gpt-5.6",
-        TURNSTILE_SECRET: "x",
         ALLOWED_ORIGINS: "http://localhost:5173",
       },
       "data:image/jpeg;base64,abcd",
