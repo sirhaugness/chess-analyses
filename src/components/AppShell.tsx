@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+const KNIGHT_BG = `${import.meta.env.BASE_URL}knight-watermark.svg`;
+
 type Props = {
   children: ReactNode;
   className?: string;
@@ -24,6 +26,15 @@ export function AppShell({ children }: ShellProps) {
   return (
     <div className="relative min-h-dvh overflow-x-hidden">
       <div className="chess-bg pointer-events-none fixed inset-0 -z-10" aria-hidden />
+      <div
+        className="pointer-events-none fixed inset-0 -z-10 bg-no-repeat opacity-100"
+        style={{
+          backgroundImage: `url(${KNIGHT_BG})`,
+          backgroundSize: "min(72vw, 440px)",
+          backgroundPosition: "right -8% bottom 8%",
+        }}
+        aria-hidden
+      />
       <div className="relative z-0 mx-auto w-full max-w-lg pb-8">{children}</div>
     </div>
   );

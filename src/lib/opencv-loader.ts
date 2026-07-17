@@ -46,14 +46,12 @@ type OpenCvMatVector = {
 type OpenCvSize = { width: number; height: number };
 
 const SCRIPT_ID = "opencv-js-script";
+export const OPENCV_LOAD_TIMEOUT_MS = 5000;
+
 let loadPromise: Promise<OpenCvModule | null> | null = null;
 
-export function loadOpenCv(): Promise<OpenCvModule | null> {
-  if (typeof window === "undefined") return Promise.resolve(null);
-  if (window.cv?.Mat) return Promise.resolve(window.cv);
-  if (loadPromise) return loadPromise;
-
-  loadPromise = new Promise((resolve) => {
+function loadOpenCvScript(): Promise<OpenCvModule | null> {
+  return new Promise((resolve) => {
     const finish = (cv: OpenCvModule | null) => resolve(cv);
 
     const existing = document.getElementById(SCRIPT_ID) as HTMLScriptElement | null;
@@ -87,6 +85,38 @@ export function loadOpenCv(): Promise<OpenCvModule | null> {
     };
     script.onerror = () => finish(null);
     document.head.appendChild(script);
+  });
+}
+
+export function loadOpenCv(): Promise<OpenCvModule | null> {
+  if (typeof window === "undefined") return Promise.resolve(null);
+  if (window.cv?.Mat) return Promise.resolve(window.cv);
+  if (loadPromise) return loadPromise;
+
+  loadPromise = new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        resolve(null);
+      }
+    }, OPENCV_LOAD_TIMEOUT_MS);
+
+    loadOpenCvScript()
+      .then((cv) => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve(cv);
+        }
+      })
+      .catch(() => {
+        if (!settled) {
+          settled = true;
+          clearTimeout(timer);
+          resolve(null);
+        }
+      });
   });
 
   return loadPromise;

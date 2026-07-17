@@ -8,7 +8,7 @@ export type BoardDetectionResult = {
   confidence: number;
 };
 
-const WORK_MAX = 600;
+const WORK_MAX = 480;
 
 function extractContourPoints(contour: {
   rows: number;
@@ -21,15 +21,19 @@ function extractContourPoints(contour: {
   return points;
 }
 
-export function detectBoardWithOpenCv(
+export async function detectBoardWithOpenCvAsync(
   cv: NonNullable<Awaited<ReturnType<typeof loadOpenCv>>>,
   sourceCanvas: HTMLCanvasElement,
-): BoardDetectionResult | null {
+  shouldAbort?: () => boolean,
+): Promise<BoardDetectionResult | null> {
   const fullW = sourceCanvas.width;
   const fullH = sourceCanvas.height;
   const scale = Math.min(1, WORK_MAX / Math.max(fullW, fullH));
   const workW = Math.max(1, Math.round(fullW * scale));
   const workH = Math.max(1, Math.round(fullH * scale));
+
+  if (shouldAbort?.()) return null;
+  await yieldToMain();
 
   const src = cv.imread(sourceCanvas);
   const work = new cv.Mat();
@@ -47,8 +51,12 @@ export function detectBoardWithOpenCv(
   cv.findContours(edges, contours, hierarchy, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE);
 
   let best: BoardDetectionResult | null = null;
+  const total = contours.size();
 
-  for (let i = 0; i < contours.size(); i++) {
+  for (let i = 0; i < total; i++) {
+    if (shouldAbort?.()) break;
+    if (i % 6 === 0) await yieldToMain();
+
     const contour = contours.get(i);
     const area = cv.contourArea(contour);
     if (area < workW * workH * 0.08) continue;
@@ -77,18 +85,20 @@ export function detectBoardWithOpenCv(
   contours.delete();
   hierarchy.delete();
 
-  return best;
+  return shouldAbort?.() ? null : best;
 }
 
 export async function detectChessboardFromCanvas(
   canvas: HTMLCanvasElement,
+  shouldAbort?: () => boolean,
 ): Promise<BoardDetectionResult | null> {
   try {
     await yieldToMain();
+    if (shouldAbort?.()) return null;
     const cv = await loadOpenCv();
-    if (!cv) return null;
+    if (!cv || shouldAbort?.()) return null;
     await yieldToMain();
-    return detectBoardWithOpenCv(cv, canvas);
+    return detectBoardWithOpenCvAsync(cv, canvas, shouldAbort);
   } catch {
     return null;
   }
