@@ -1,204 +1,135 @@
-import { useCallback, useMemo, useState } from "react";
-import type { Chess, Square } from "chess.js";
+import { useCallback, useState } from "react";
 import type { BoardRecognitionResult, BoardOrientation, PlacedPiece } from "../lib/types";
 import {
   apiPieceToPlaced,
   buildFen,
+  defaultMeta,
+  fenToPieces,
   piecesToPlacementMap,
   placementMapToArray,
-  tryCreateChess,
-  tryLoadChess,
 } from "../lib/chess-position";
 import { orientationFromGuess } from "../lib/image-grid-mapping";
 
-type VerboseMove = { from: string; to: string; promotion?: string };
+type MoveRecord = { from: string; to: string; label: string };
 
 export function useChessAnalysis(initialBoardOrientation: BoardOrientation) {
   const [boardOrientation, setBoardOrientation] = useState<"white" | "black">(
     initialBoardOrientation === "white_at_bottom" ? "white" : "black",
   );
-  const [chess, setChess] = useState<Chess | null>(null);
-  const [startFen, setStartFen] = useState<string | null>(null);
+  const [pieces, setPieces] = useState<PlacedPiece[]>([]);
+  const [startPieces, setStartPieces] = useState<PlacedPiece[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [moveStack, setMoveStack] = useState<VerboseMove[]>([]);
-  const [redoStack, setRedoStack] = useState<VerboseMove[]>([]);
-  const [promotionPending, setPromotionPending] = useState<{
-    from: string;
-    to: string;
-  } | null>(null);
-  const [fenHistory, setFenHistory] = useState<string[]>([]);
-  const [, bump] = useState(0);
-  const refresh = () => bump((n) => n + 1);
+  const [moveStack, setMoveStack] = useState<MoveRecord[]>([]);
+  const [redoMoveStack, setRedoMoveStack] = useState<MoveRecord[]>([]);
+  const [pieceHistory, setPieceHistory] = useState<PlacedPiece[][]>([]);
+  const [pieceRedo, setPieceRedo] = useState<PlacedPiece[][]>([]);
 
   const loadNewStart = useCallback(
     (fen: string, orient: BoardOrientation): string | null => {
       setLoadError(null);
-
-      if (chess) {
-        const loaded = tryLoadChess(chess, fen);
-        if (!loaded.ok) {
-          setLoadError(loaded.message);
-          return loaded.message;
+      try {
+        const parsed = fenToPieces(fen);
+        if (parsed.length === 0) {
+          const message = "Ingen sjakkstilling er lastet.";
+          setLoadError(message);
+          return message;
         }
-      } else {
-        const created = tryCreateChess(fen);
-        if (!created.ok) {
-          setLoadError(created.message);
-          return created.message;
-        }
-        setChess(created.chess);
+        setStartPieces(parsed);
+        setPieces(parsed);
+        setMoveStack([]);
+        setRedoMoveStack([]);
+        setPieceHistory([]);
+        setPieceRedo([]);
+        setBoardOrientation(orient === "white_at_bottom" ? "white" : "black");
+        return null;
+      } catch {
+        const message = "Ugyldig sjakkstilling (FEN kan ikke lastes).";
+        setLoadError(message);
+        return message;
       }
-
-      setStartFen(fen);
-      setMoveStack([]);
-      setRedoStack([]);
-      setFenHistory([]);
-      setPromotionPending(null);
-      setBoardOrientation(orient === "white_at_bottom" ? "white" : "black");
-      refresh();
-      return null;
     },
-    [chess],
+    [],
   );
 
   const resetToStart = useCallback(() => {
-    if (!chess || !startFen) return;
-    const loaded = tryLoadChess(chess, startFen);
-    if (!loaded.ok) {
-      setLoadError(loaded.message);
-      return;
-    }
+    setPieces(startPieces);
     setMoveStack([]);
-    setRedoStack([]);
-    setPromotionPending(null);
+    setRedoMoveStack([]);
+    setPieceHistory([]);
+    setPieceRedo([]);
     setLoadError(null);
-    refresh();
-  }, [chess, startFen]);
-
-  const applyMove = useCallback(
-    (from: string, to: string, promotion?: "q" | "r" | "b" | "n") => {
-      if (!chess) return false;
-      const move = chess.move({ from, to, promotion });
-      if (!move) return false;
-      setMoveStack((m) => [...m, { from, to, promotion }]);
-      setRedoStack([]);
-      refresh();
-      return true;
-    },
-    [chess],
-  );
+  }, [startPieces]);
 
   const tryMove = useCallback(
     (from: string, to: string): boolean => {
-      if (!chess) return false;
-      const piece = chess.get(from as Square);
-      if (!piece) return false;
+      if (from === to) return false;
+      const map = piecesToPlacementMap(pieces);
+      const moving = map.get(from);
+      if (!moving) return false;
 
-      const before = chess.fen();
-      chess.remove(from as Square);
-      if (chess.get(to as Square)) {
-        chess.remove(to as Square);
-      }
-      const placed = chess.put(piece, to as Square);
-      if (!placed) return false;
+      map.delete(from);
+      map.set(to, { ...moving, square: to });
+      const next = placementMapToArray(map);
 
-      setFenHistory((history) => [...history, before]);
-      setMoveStack((m) => [...m, { from, to }]);
-      setRedoStack([]);
-      setPromotionPending(null);
-      refresh();
+      setPieceHistory((history) => [...history, pieces]);
+      setPieceRedo([]);
+      setPieces(next);
+      setMoveStack((m) => [...m, { from, to, label: `${from} → ${to}` }]);
+      setRedoMoveStack([]);
       return true;
     },
-    [chess],
-  );
-
-  const completePromotion = useCallback(
-    (piece: "q" | "r" | "b" | "n") => {
-      if (!promotionPending) return;
-      applyMove(promotionPending.from, promotionPending.to, piece);
-      setPromotionPending(null);
-    },
-    [promotionPending, applyMove],
+    [pieces],
   );
 
   const undo = useCallback(() => {
-    if (!chess || fenHistory.length === 0) return;
-    const previous = fenHistory[fenHistory.length - 1];
-    chess.load(previous);
-    setFenHistory((history) => history.slice(0, -1));
+    if (pieceHistory.length === 0 || moveStack.length === 0) return;
+    const previous = pieceHistory[pieceHistory.length - 1];
+    const lastMove = moveStack[moveStack.length - 1];
+    setPieceRedo((redo) => [...redo, pieces]);
+    setRedoMoveStack((redo) => [...redo, lastMove]);
+    setPieces(previous);
+    setPieceHistory((history) => history.slice(0, -1));
     setMoveStack((m) => m.slice(0, -1));
-    setRedoStack([]);
-    setPromotionPending(null);
     setLoadError(null);
-    refresh();
-  }, [chess, fenHistory]);
+  }, [pieceHistory, moveStack, pieces]);
 
   const redo = useCallback(() => {
-    if (!chess) return;
-    setRedoStack((r) => {
-      if (r.length === 0) return r;
-      const next = r[r.length - 1];
-      const ok = chess.move({
-        from: next.from,
-        to: next.to,
-        promotion: next.promotion as "q" | "r" | "b" | "n" | undefined,
-      });
-      if (!ok) return r;
-      setMoveStack((m) => [...m, next]);
-      refresh();
-      return r.slice(0, -1);
-    });
-  }, [chess]);
+    if (pieceRedo.length === 0 || redoMoveStack.length === 0) return;
+    const nextPieces = pieceRedo[pieceRedo.length - 1];
+    const nextMove = redoMoveStack[redoMoveStack.length - 1];
+    setPieceHistory((history) => [...history, pieces]);
+    setPieces(nextPieces);
+    setPieceRedo((redo) => redo.slice(0, -1));
+    setMoveStack((m) => [...m, nextMove]);
+    setRedoMoveStack((r) => r.slice(0, -1));
+  }, [pieceRedo, redoMoveStack, pieces]);
 
-  const fen = chess?.fen() ?? "";
-  const moveList = useMemo(() => {
-    if (!startFen) return [];
-    const created = tryCreateChess(startFen);
-    if (!created.ok) return [];
-    const c = created.chess;
-    const sans: string[] = [];
-    for (const m of moveStack) {
-      const played = c.move({
-        from: m.from,
-        to: m.to,
-        promotion: m.promotion as "q" | "r" | "b" | "n" | undefined,
-      });
-      if (played) sans.push(played.san);
-    }
-    return sans;
-  }, [moveStack, startFen]);
-
-  let statusText = "";
-  if (chess) {
-    if (chess.isCheckmate()) statusText = "Sjakkmatt";
-    else if (chess.isStalemate()) statusText = "Patt";
-    else if (chess.isDraw()) statusText = "Remis";
-    else if (chess.isCheck()) statusText = "Sjakk";
-    else statusText = "Utforsk stillingen";
-  }
+  const fen = buildFen(pieces, defaultMeta("w"));
+  const moveList = moveStack.map((m) => m.label);
+  const statusText = "Utforsk stillingen";
 
   const flipBoard = useCallback(() => {
     setBoardOrientation((o) => (o === "white" ? "black" : "white"));
   }, []);
 
   return {
-    chess,
-    isReady: chess !== null,
+    chess: null,
+    isReady: startPieces.length > 0,
     loadError,
     fen,
     moveList,
     boardOrientation,
-    promotionPending,
+    promotionPending: null,
     statusText,
     tryMove,
-    completePromotion,
+    completePromotion: () => {},
     undo,
     redo,
     resetToStart,
     loadNewStart,
     flipBoard,
-    canUndo: moveStack.length > 0,
-    canRedo: redoStack.length > 0,
+    canUndo: pieceHistory.length > 0,
+    canRedo: pieceRedo.length > 0,
   };
 }
 

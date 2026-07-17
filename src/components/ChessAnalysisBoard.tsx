@@ -1,28 +1,19 @@
 import { Chessboard } from "react-chessboard";
 import type { CSSProperties } from "react";
-import type { Chess } from "chess.js";
 
 type Props = {
-  chess: Chess | null;
+  position: string;
   boardOrientation: "white" | "black";
   onTryMove: (from: string, to: string) => boolean;
   lastMove?: { from: string; to: string } | null;
 };
 
 export function ChessAnalysisBoard({
-  chess,
+  position,
   boardOrientation,
   onTryMove,
   lastMove,
 }: Props) {
-  if (!chess) {
-    return (
-      <p className="text-center text-sm text-stone-600">
-        Ingen gyldig sjakkstilling er lastet.
-      </p>
-    );
-  }
-
   const squareStyles: Record<string, CSSProperties> = {};
   if (lastMove) {
     for (const sq of [lastMove.from, lastMove.to]) {
@@ -34,7 +25,7 @@ export function ChessAnalysisBoard({
     <div className="w-full max-w-[min(100vw-2rem,480px)] mx-auto">
       <Chessboard
         options={{
-          position: chess.fen(),
+          position,
           boardOrientation,
           allowDragging: true,
           onPieceDrop: ({ sourceSquare, targetSquare }) => {

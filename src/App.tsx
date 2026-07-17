@@ -19,10 +19,9 @@ import {
 } from "./hooks/useChessAnalysis";
 import { ChessAnalysisBoard } from "./components/ChessAnalysisBoard";
 import { MoveHistory } from "./components/MoveHistory";
-import { PromotionDialog } from "./components/PromotionDialog";
 import { BoardControls } from "./components/BoardControls";
 import { canEnterAnalysisMode, validatePositionForAnalysis } from "./lib/position-validation";
-import { AppShell, GlassAlert, GlassCard, PrimaryButton } from "./components/AppShell";
+import { AppShell, GlassAlert, GlassCard } from "./components/AppShell";
 
 function mapApiError(code: string, message: string): string {
   const map: Record<string, string> = {
@@ -46,7 +45,6 @@ export default function App() {
   const [preparingImage, setPreparingImage] = useState(false);
   const [rawImage, setRawImage] = useState<string | null>(null);
   const [croppedImage, setCroppedImage] = useState<string | null>(null);
-  const [cropMeta, setCropMeta] = useState<{ kb: number } | null>(null);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const analyzingRef = useRef(false);
 
@@ -99,13 +97,14 @@ export default function App() {
     }
   }, []);
 
-  const runAnalyze = useCallback(async () => {
-    if (!croppedImage || analyzingRef.current) return;
+  const runAnalyze = useCallback(async (imageOverride?: string) => {
+    const image = imageOverride ?? croppedImage;
+    if (!image || analyzingRef.current) return;
     analyzingRef.current = true;
     setAnalyzeError(null);
     setPhase("analyze");
     const res = await analyzeBoardImage({
-      imageDataUrl: croppedImage,
+      imageDataUrl: image,
     });
     analyzingRef.current = false;
 
@@ -176,56 +175,26 @@ export default function App() {
 
       {phase === "crop" && rawImage && (
         <>
-          {croppedImage && (
-            <GlassCard className="mx-4 mt-6">
-              <img
-                src={croppedImage}
-                alt="Beskjært sjakkbrett"
-                className="mx-auto mb-2 max-h-40 rounded-lg border border-white/20"
-              />
-              {cropMeta && (
-                <p className="text-center text-xs text-stone-400">~{cropMeta.kb} KB</p>
-              )}
-              {analyzeError && (
-                <div className="mt-3">
-                  <GlassAlert tone="red">{analyzeError}</GlassAlert>
-                </div>
-              )}
-              <PrimaryButton className="mt-4" disabled={!croppedImage} onClick={() => void runAnalyze()}>
-                Analyser brettet
-              </PrimaryButton>
-            </GlassCard>
-          )}
-          {!croppedImage && (
-            <BoardCropFlow
-              key={rawImage}
-              imageSrc={rawImage}
-              onConfirm={(dataUrl, metaKb) => {
-                setCroppedImage(dataUrl);
-                setCropMeta(metaKb);
-              }}
-              onBack={() => setPhase("home")}
-              onNewImage={() => {
-                setRawImage(null);
-                setCroppedImage(null);
-                setPhase("home");
-              }}
-            />
-          )}
-          {croppedImage && (
-            <div className="mx-4 pb-8 text-center">
-              <button
-                type="button"
-                className="mt-2 text-sm text-stone-300 underline"
-                onClick={() => {
-                  setCroppedImage(null);
-                  setCropMeta(null);
-                }}
-              >
-                Juster utsnitt
-              </button>
+          {analyzeError && (
+            <div className="mx-4 mt-4">
+              <GlassAlert tone="red">{analyzeError}</GlassAlert>
             </div>
           )}
+          <BoardCropFlow
+            key={rawImage}
+            imageSrc={rawImage}
+            onConfirm={(dataUrl) => {
+              setCroppedImage(dataUrl);
+              void runAnalyze(dataUrl);
+            }}
+            onBack={() => setPhase("home")}
+            onNewImage={() => {
+              setRawImage(null);
+              setCroppedImage(null);
+              setAnalyzeError(null);
+              setPhase("home");
+            }}
+          />
         </>
       )}
 
@@ -280,7 +249,8 @@ export default function App() {
             <>
           <p className="text-center font-medium text-stone-50">{analysis.statusText}</p>
           <ChessAnalysisBoard
-            chess={analysis.chess}
+            key={analysis.fen}
+            position={analysis.fen}
             boardOrientation={analysis.boardOrientation}
             onTryMove={analysis.tryMove}
           />
@@ -303,14 +273,6 @@ export default function App() {
                 Kopier FEN
               </button>
             </div>
-          )}
-          {analysis.promotionPending && (
-            <PromotionDialog
-              onQueen={() => analysis.completePromotion("q")}
-              onRook={() => analysis.completePromotion("r")}
-              onBishop={() => analysis.completePromotion("b")}
-              onKnight={() => analysis.completePromotion("n")}
-            />
           )}
           <BoardControls>
             <div className="grid grid-cols-2 gap-2">
