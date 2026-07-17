@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { AppPhase, BoardOrientation, BoardRecognitionResult, PlacedPiece, PositionMeta } from "./lib/types";
 import { ImageSourcePicker } from "./components/ImageSourcePicker";
 import { BoardImageCropper } from "./components/BoardImageCropper";
@@ -22,6 +22,7 @@ import { ChessAnalysisBoard } from "./components/ChessAnalysisBoard";
 import { MoveHistory } from "./components/MoveHistory";
 import { PromotionDialog } from "./components/PromotionDialog";
 import { BoardControls } from "./components/BoardControls";
+import { canEnterAnalysisMode, validatePositionForAnalysis } from "./lib/position-validation";
 
 function mapApiError(code: string, message: string): string {
   const map: Record<string, string> = {
@@ -58,13 +59,28 @@ export default function App() {
   const [analysisStartPieces, setAnalysisStartPieces] = useState<PlacedPiece[]>([]);
   const [meta, setMeta] = useState<PositionMeta>(defaultMeta("w"));
   const [fenOpen, setFenOpen] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
-  const analysisFen = useMemo(
-    () => buildFen(analysisStartPieces, meta),
-    [analysisStartPieces, meta],
+  const analysis = useChessAnalysis(orientation);
+
+  const startAnalysis = useCallback(
+    (pieces: PlacedPiece[], orient: BoardOrientation = orientation) => {
+      const issues = validatePositionForAnalysis(pieces, meta.activeColor);
+      if (!canEnterAnalysisMode(issues)) {
+        setAnalysisError("Stillingen er ugyldig og kan ikke brukes i analysemodus.");
+        return false;
+      }
+      const fen = buildFen(pieces, meta);
+      const err = analysis.loadNewStart(fen, orient);
+      if (err) {
+        setAnalysisError(err);
+        return false;
+      }
+      setAnalysisError(null);
+      return true;
+    },
+    [analysis, meta, orientation],
   );
-
-  const analysis = useChessAnalysis(analysisFen, orientation);
 
   const handleFile = useCallback(async (file: File) => {
     const err = validateImageFile(file);
@@ -138,7 +154,7 @@ export default function App() {
   const confirmReview = () => {
     setConfirmedPhotoPieces(recognizedPieces);
     setAnalysisStartPieces(recognizedPieces);
-    analysis.loadNewStart(buildFen(recognizedPieces, meta), orientation);
+    if (!startAnalysis(recognizedPieces)) return;
     setPhase("analysis");
   };
 
@@ -238,14 +254,14 @@ export default function App() {
           photoPieces={confirmedPhotoPieces.length ? confirmedPhotoPieces : recognizedPieces}
           onSaveAsAnalysisStart={(pieces) => {
             setAnalysisStartPieces(pieces);
-            analysis.loadNewStart(buildFen(pieces, meta), orientation);
+            if (!startAnalysis(pieces)) return;
             setPhase("analysis");
           }}
           onCancel={() => setPhase(confirmedPhotoPieces.length ? "analysis" : "review")}
           onRestorePhoto={() => {
             const photo = confirmedPhotoPieces.length ? confirmedPhotoPieces : recognizedPieces;
             setAnalysisStartPieces(photo);
-            analysis.loadNewStart(buildFen(photo, meta), orientation);
+            if (!startAnalysis(photo)) return;
             setPhase("analysis");
           }}
         />
@@ -253,6 +269,17 @@ export default function App() {
 
       {phase === "analysis" && (
         <section className="mx-auto flex max-w-lg flex-col gap-3 px-4 py-4 pb-36">
+          {(analysisError || analysis.loadError) && (
+            <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900" role="alert">
+              {analysisError ?? analysis.loadError}
+            </p>
+          )}
+          {!analysis.isReady ? (
+            <p className="text-center text-sm text-stone-600">
+              Ingen gyldig sjakkstilling er lastet. Gå tilbake og kontroller stillingen.
+            </p>
+          ) : (
+            <>
           <p className="text-center font-medium">{analysis.statusText}</p>
           <ChessAnalysisBoard
             chess={analysis.chess}
@@ -302,7 +329,7 @@ export default function App() {
                 onClick={() => {
                   const photo = confirmedPhotoPieces;
                   setAnalysisStartPieces(photo);
-                  analysis.loadNewStart(buildFen(photo, meta), orientation);
+                  startAnalysis(photo);
                 }}
               >
                 Tilbake til bildestillingen
@@ -325,6 +352,8 @@ export default function App() {
               Nytt bilde
             </BoardControls.Primary>
           </BoardControls>
+            </>
+          )}
         </section>
       )}
     </div>

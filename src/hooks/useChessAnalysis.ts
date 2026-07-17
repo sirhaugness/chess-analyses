@@ -1,26 +1,25 @@
 import { useCallback, useMemo, useState } from "react";
-import { Chess, type Square } from "chess.js";
+import type { Chess, Square } from "chess.js";
 import type { BoardRecognitionResult, BoardOrientation, PlacedPiece } from "../lib/types";
 import {
   apiPieceToPlaced,
   buildFen,
   piecesToPlacementMap,
   placementMapToArray,
+  tryCreateChess,
+  tryLoadChess,
 } from "../lib/chess-position";
 import { orientationFromGuess } from "../lib/image-grid-mapping";
 
 type VerboseMove = { from: string; to: string; promotion?: string };
 
-export function useChessAnalysis(
-  analysisStartFen: string,
-  initialBoardOrientation: BoardOrientation,
-) {
+export function useChessAnalysis(initialBoardOrientation: BoardOrientation) {
   const [boardOrientation, setBoardOrientation] = useState<"white" | "black">(
     initialBoardOrientation === "white_at_bottom" ? "white" : "black",
   );
-  const [startFen, setStartFen] = useState(analysisStartFen);
-
-  const [chess] = useState(() => new Chess(analysisStartFen));
+  const [chess, setChess] = useState<Chess | null>(null);
+  const [startFen, setStartFen] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [moveStack, setMoveStack] = useState<VerboseMove[]>([]);
   const [redoStack, setRedoStack] = useState<VerboseMove[]>([]);
   const [promotionPending, setPromotionPending] = useState<{
@@ -30,29 +29,53 @@ export function useChessAnalysis(
   const [, bump] = useState(0);
   const refresh = () => bump((n) => n + 1);
 
-  const resetToStart = useCallback(() => {
-    chess.load(startFen);
-    setMoveStack([]);
-    setRedoStack([]);
-    setPromotionPending(null);
-    refresh();
-  }, [chess, startFen]);
-
   const loadNewStart = useCallback(
-    (fen: string, orient: BoardOrientation) => {
-      chess.load(fen);
+    (fen: string, orient: BoardOrientation): string | null => {
+      setLoadError(null);
+
+      if (chess) {
+        const loaded = tryLoadChess(chess, fen);
+        if (!loaded.ok) {
+          setLoadError(loaded.message);
+          return loaded.message;
+        }
+      } else {
+        const created = tryCreateChess(fen);
+        if (!created.ok) {
+          setLoadError(created.message);
+          return created.message;
+        }
+        setChess(created.chess);
+      }
+
       setStartFen(fen);
       setMoveStack([]);
       setRedoStack([]);
       setPromotionPending(null);
       setBoardOrientation(orient === "white_at_bottom" ? "white" : "black");
       refresh();
+      return null;
     },
     [chess],
   );
 
+  const resetToStart = useCallback(() => {
+    if (!chess || !startFen) return;
+    const loaded = tryLoadChess(chess, startFen);
+    if (!loaded.ok) {
+      setLoadError(loaded.message);
+      return;
+    }
+    setMoveStack([]);
+    setRedoStack([]);
+    setPromotionPending(null);
+    setLoadError(null);
+    refresh();
+  }, [chess, startFen]);
+
   const applyMove = useCallback(
     (from: string, to: string, promotion?: "q" | "r" | "b" | "n") => {
+      if (!chess) return false;
       const move = chess.move({ from, to, promotion });
       if (!move) return false;
       setMoveStack((m) => [...m, { from, to, promotion }]);
@@ -65,6 +88,7 @@ export function useChessAnalysis(
 
   const tryMove = useCallback(
     (from: string, to: string): boolean => {
+      if (!chess) return false;
       const piece = chess.get(from as Square);
       if (!piece) return false;
       if (piece.type === "p") {
@@ -89,6 +113,7 @@ export function useChessAnalysis(
   );
 
   const undo = useCallback(() => {
+    if (!chess) return;
     const undone = chess.undo();
     if (!undone) return;
     setMoveStack((m) => {
@@ -101,6 +126,7 @@ export function useChessAnalysis(
   }, [chess]);
 
   const redo = useCallback(() => {
+    if (!chess) return;
     setRedoStack((r) => {
       if (r.length === 0) return r;
       const next = r[r.length - 1];
@@ -116,9 +142,12 @@ export function useChessAnalysis(
     });
   }, [chess]);
 
-  const fen = chess.fen();
+  const fen = chess?.fen() ?? "";
   const moveList = useMemo(() => {
-    const c = new Chess(startFen);
+    if (!startFen) return [];
+    const created = tryCreateChess(startFen);
+    if (!created.ok) return [];
+    const c = created.chess;
     const sans: string[] = [];
     for (const m of moveStack) {
       const played = c.move({
@@ -131,13 +160,14 @@ export function useChessAnalysis(
     return sans;
   }, [moveStack, startFen]);
 
-  const statusText = useMemo(() => {
-    if (chess.isCheckmate()) return "Sjakkmatt";
-    if (chess.isStalemate()) return "Patt";
-    if (chess.isDraw()) return "Remis";
-    if (chess.isCheck()) return "Sjakk";
-    return chess.turn() === "w" ? "Hvit i trekket" : "Svart i trekket";
-  }, [chess, fen]);
+  let statusText = "";
+  if (chess) {
+    if (chess.isCheckmate()) statusText = "Sjakkmatt";
+    else if (chess.isStalemate()) statusText = "Patt";
+    else if (chess.isDraw()) statusText = "Remis";
+    else if (chess.isCheck()) statusText = "Sjakk";
+    else statusText = chess.turn() === "w" ? "Hvit i trekket" : "Svart i trekket";
+  }
 
   const flipBoard = useCallback(() => {
     setBoardOrientation((o) => (o === "white" ? "black" : "white"));
@@ -145,6 +175,8 @@ export function useChessAnalysis(
 
   return {
     chess,
+    isReady: chess !== null,
+    loadError,
     fen,
     moveList,
     boardOrientation,

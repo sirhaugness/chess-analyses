@@ -1,3 +1,4 @@
+import { Chess } from "chess.js";
 import type { BoardOrientation, CastlingRights, PlacedPiece, PositionMeta } from "./types";
 import type { PieceType, RecognizedPiece } from "./types";
 import { imageCellToSquare } from "./image-grid-mapping";
@@ -161,3 +162,44 @@ export function boardObjectToPieces(obj: Record<string, string>): PlacedPiece[] 
 export function copyFenToClipboard(fen: string): Promise<void> {
   return navigator.clipboard.writeText(fen);
 }
+
+export function formatChessLoadError(raw: string): string {
+  if (raw.includes("missing white king")) {
+    return "Stillingen mangler hvit konge.";
+  }
+  if (raw.includes("missing black king")) {
+    return "Stillingen mangler svart konge.";
+  }
+  if (raw.includes("Invalid FEN")) {
+    return "Ugyldig sjakkstilling (FEN kan ikke lastes).";
+  }
+  return "Ugyldig sjakkstilling (FEN kan ikke lastes).";
+}
+
+export function tryCreateChess(
+  fen: string,
+): { ok: true; chess: Chess } | { ok: false; message: string } {
+  if (!fen.trim()) {
+    return { ok: false, message: "Ingen sjakkstilling er lastet." };
+  }
+  try {
+    return { ok: true, chess: new Chess(fen) };
+  } catch (error) {
+    const raw = error instanceof Error ? error.message : "Invalid FEN";
+    return { ok: false, message: formatChessLoadError(raw) };
+  }
+}
+
+export function tryLoadChess(
+  chess: Chess,
+  fen: string,
+): { ok: true } | { ok: false; message: string } {
+  try {
+    chess.load(fen);
+    return { ok: true };
+  } catch (error) {
+    const raw = error instanceof Error ? error.message : "Invalid FEN";
+    return { ok: false, message: formatChessLoadError(raw) };
+  }
+}
+

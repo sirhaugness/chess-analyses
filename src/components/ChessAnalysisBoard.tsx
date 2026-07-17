@@ -1,8 +1,9 @@
 import { Chessboard } from "react-chessboard";
+import type { CSSProperties } from "react";
 import type { Chess, Square } from "chess.js";
 
 type Props = {
-  chess: Chess;
+  chess: Chess | null;
   boardOrientation: "white" | "black";
   onTryMove: (from: string, to: string) => boolean;
   lastMove?: { from: string; to: string } | null;
@@ -14,7 +15,15 @@ export function ChessAnalysisBoard({
   onTryMove,
   lastMove,
 }: Props) {
-  const squareStyles: Record<string, React.CSSProperties> = {};
+  if (!chess) {
+    return (
+      <p className="text-center text-sm text-stone-600">
+        Ingen gyldig sjakkstilling er lastet.
+      </p>
+    );
+  }
+
+  const squareStyles: Record<string, CSSProperties> = {};
   if (lastMove) {
     for (const sq of [lastMove.from, lastMove.to]) {
       squareStyles[sq] = { backgroundColor: "rgba(155, 199, 0, 0.41)" };
