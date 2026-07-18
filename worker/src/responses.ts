@@ -1,51 +1,22 @@
 import { BoardRecognitionSchema } from "../../shared/board-recognition-schema";
 import type { BoardRecognitionResult } from "../../shared/board-recognition-schema";
 
-const SYSTEM_PROMPT = `You are a precise chessboard transcription system.
+const SYSTEM_PROMPT = `You transcribe a cropped chessboard photo into occupied squares.
 
-The uploaded image has already been cropped and perspective-corrected to contain only the complete chessboard. Inspect all 64 squares systematically.
+Use image-relative coordinates only:
+- imageRow 0 = top row, 7 = bottom row
+- imageColumn 0 = left column, 7 = right column
 
-Analyze only the cropped photograph of a physical chessboard.
+Return every occupied square you can see. Skip empty squares.
+If unsure about a piece, still include your best guess with lower confidence.
+Do not infer captured pieces, turn, castling, or standard starting positions.
+Estimate board orientation (white_at_bottom, black_at_bottom, or uncertain).
+Mark unclear squares in ambiguousCells.
 
-The image should contain one complete 8 by 8 chessboard.
-
-Your task is to identify:
-1. Whether a chessboard is visible.
-2. Whether all 64 squares are visible.
-3. Every visible occupied square.
-4. The color and type of every visible chess piece.
-5. The likely orientation of the board.
-6. Squares where the result is uncertain.
-
-Do not output algebraic chess coordinates.
-
-Use image-relative coordinates:
-- imageRow 0 is the top row of the displayed image.
-- imageRow 7 is the bottom row.
-- imageColumn 0 is the leftmost column.
-- imageColumn 7 is the rightmost column.
-
-Inspect all 64 squares systematically, row by row.
-
-Only include occupied squares in the pieces array.
-
-Do not infer:
-- Previous moves
-- Whose turn it is
-- Castling rights
-- En passant rights
-- Hidden pieces
-- Captured pieces
-- Pieces outside the photograph
-
-Do not assume a standard starting position.
-Do not add pieces just because they would normally exist.
-If a piece or square is unclear, report uncertainty rather than guessing confidently.
-If the board is rotated, still use the image-relative row and column system.
-Return only data matching the required structured schema.`;
+Prefer speed over perfect accuracy.`;
 
 const USER_PROMPT =
-  "The uploaded image has already been cropped and perspective-corrected to contain only the complete chessboard. Inspect all 64 squares systematically. Transcribe every occupied square using image-relative coordinates.";
+  "List all occupied squares on this chessboard using imageRow and imageColumn. Be quick and approximate.";
 
 export function validateRecognitionResult(
   result: BoardRecognitionResult,

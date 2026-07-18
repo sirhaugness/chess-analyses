@@ -2,6 +2,8 @@ import type { OrderedCorners, Point } from "./board-geometry";
 import { orderedCornersToArray } from "./board-geometry";
 
 export const EXPORT_MAX_SIZE = 1600;
+/** Smaller export for OpenAI recognition — faster upload and analysis. */
+export const RECOGNITION_EXPORT_SIZE = 768;
 export const TARGET_MAX_BYTES = Math.floor(1.5 * 1024 * 1024);
 export const ABSOLUTE_MAX_BYTES = Math.floor(2.5 * 1024 * 1024);
 export const JPEG_QUALITIES = [0.82, 0.75, 0.68, 0.58, 0.48, 0.38] as const;

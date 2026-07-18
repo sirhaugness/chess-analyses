@@ -8,7 +8,7 @@ import {
   piecesToPlacementMap,
   placementMapToArray,
 } from "../lib/chess-position";
-import { orientationFromGuess } from "../lib/image-grid-mapping";
+import { orientationFromGuess, rotateImageCell } from "../lib/image-grid-mapping";
 
 type MoveRecord = { from: string; to: string; label: string };
 
@@ -142,8 +142,15 @@ export function useChessAnalysis(initialBoardOrientation: BoardOrientation) {
 export function recognitionToPieces(
   result: BoardRecognitionResult,
   orientation: BoardOrientation,
+  imageQuarterTurns = 0,
 ): PlacedPiece[] {
-  return result.pieces.map((p) => apiPieceToPlaced(p, orientation));
+  return result.pieces.map((p) => {
+    const cell = rotateImageCell(p.imageRow, p.imageColumn, imageQuarterTurns);
+    return apiPieceToPlaced(
+      { ...p, imageRow: cell.imageRow, imageColumn: cell.imageColumn },
+      orientation,
+    );
+  });
 }
 
 export function guessToOrientation(
@@ -156,8 +163,9 @@ export function guessToOrientation(
 export function piecesFromRecognition(
   raw: BoardRecognitionResult,
   orientation: BoardOrientation,
+  imageQuarterTurns = 0,
 ): PlacedPiece[] {
-  return recognitionToPieces(raw, orientation);
+  return recognitionToPieces(raw, orientation, imageQuarterTurns);
 }
 
 export function piecesToMapUpdate(

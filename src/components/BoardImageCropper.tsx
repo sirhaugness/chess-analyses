@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
-import Cropper, { type Area } from "react-easy-crop";
-import { getCroppedImage, approximateKbFromDataUrl } from "../lib/image-processing";
-import { GlassAlert, GlassCard, PrimaryButton, SecondaryButton } from "./AppShell";
+import Cropper, { type Area, type MediaSize } from "react-easy-crop";
+import { getCroppedImage } from "../lib/image-processing";
+import { GlassAlert, PrimaryButton, SecondaryButton } from "./AppShell";
 
 type Props = {
   imageSrc: string;
@@ -10,17 +10,47 @@ type Props = {
   onNewImage: () => void;
 };
 
+function ZoomButton({
+  label,
+  onClick,
+  disabled,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className="flex h-14 min-w-14 items-center justify-center rounded-xl border border-white/25 bg-stone-900/80 text-2xl font-semibold text-stone-50 backdrop-blur-sm disabled:opacity-40"
+      aria-label={label}
+    >
+      {label}
+    </button>
+  );
+}
+
 export function BoardImageCropper({ imageSrc, onConfirm, onBack, onNewImage }: Props) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
+  const [minZoom, setMinZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
   const [busy, setBusy] = useState(false);
-  const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const onCropComplete = useCallback((_: Area, pixels: Area) => {
     setCroppedAreaPixels(pixels);
+  }, []);
+
+  const onMediaLoaded = useCallback((media: MediaSize) => {
+    const fitZoom = Math.max(media.width, media.height) / Math.min(media.width, media.height);
+    const nextMin = Math.max(1, fitZoom * 0.85);
+    setMinZoom(nextMin);
+    setZoom(nextMin);
+    setCrop({ x: 0, y: 0 });
   }, []);
 
   const handleConfirm = async () => {
@@ -29,7 +59,6 @@ export function BoardImageCropper({ imageSrc, onConfirm, onBack, onNewImage }: P
     setError(null);
     try {
       const result = await getCroppedImage(imageSrc, croppedAreaPixels, rotation);
-      setPreview(result.dataUrl);
       onConfirm(result.dataUrl, { kb: result.approximateSizeKb });
     } catch {
       setError("Kunne ikke beskjære bildet.");
@@ -38,64 +67,68 @@ export function BoardImageCropper({ imageSrc, onConfirm, onBack, onNewImage }: P
     }
   };
 
-  return (
-    <GlassCard className="mx-4 mt-4 flex flex-col gap-4">
-      <div>
-        <h2 className="text-xl font-semibold text-stone-50">Beskjær sjakkbrettet</h2>
-        <p className="mt-1 text-sm text-stone-300">
-          Plasser hele sjakkbrettet innenfor rammen. Ta med alle 64 rutene, men minst mulig av
-          området rundt.
-        </p>
-      </div>
+  const stepZoom = (delta: number) => {
+    setZoom((z) => Math.min(4, Math.max(minZoom, Number((z + delta).toFixed(2)))));
+  };
 
-      <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-black/40">
+  return (
+    <div className="fixed inset-0 z-20 flex flex-col bg-stone-950">
+      <header className="shrink-0 border-b border-white/10 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <h2 className="text-lg font-semibold text-stone-50">Beskjær sjakkbrettet</h2>
+        <p className="mt-1 text-sm text-stone-300">
+          Dra bildet og knip for å zoome. Plasser alle 64 rutene innenfor rammen.
+        </p>
+      </header>
+
+      <div className="relative min-h-0 flex-1 touch-none">
         <Cropper
           image={imageSrc}
           crop={crop}
           zoom={zoom}
+          minZoom={minZoom}
+          maxZoom={4}
           rotation={rotation}
           aspect={1}
+          showGrid
+          zoomWithScroll={false}
+          restrictPosition={false}
+          objectFit="contain"
           onCropChange={setCrop}
           onZoomChange={setZoom}
           onRotationChange={setRotation}
           onCropComplete={onCropComplete}
+          onMediaLoaded={onMediaLoaded}
         />
       </div>
 
-      <label className="text-sm text-stone-200">
-        Zoom
-        <input
-          type="range"
-          min={1}
-          max={3}
-          step={0.05}
-          value={zoom}
-          onChange={(e) => setZoom(Number(e.target.value))}
-          className="mt-1 w-full accent-emerald-500"
-        />
-      </label>
-
-      {busy && <p className="text-center text-sm text-stone-300">Komprimerer bildet …</p>}
-      {preview && (
-        <p className="text-xs text-stone-400">
-          Forhåndsvisning eksportert (~{approximateKbFromDataUrl(preview)} KB)
-        </p>
+      {error && (
+        <div className="shrink-0 px-4">
+          <GlassAlert tone="red">{error}</GlassAlert>
+        </div>
       )}
 
-      {error && <GlassAlert tone="red">{error}</GlassAlert>}
+      <div className="shrink-0 space-y-3 border-t border-white/10 bg-stone-950/95 px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-md">
+        <div className="flex items-center justify-center gap-3">
+          <ZoomButton label="−" onClick={() => stepZoom(-0.15)} disabled={zoom <= minZoom} />
+          <p className="min-w-16 text-center text-sm text-stone-300">{Math.round(zoom * 100)} %</p>
+          <ZoomButton label="+" onClick={() => stepZoom(0.15)} disabled={zoom >= 4} />
+        </div>
 
-      <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-2 gap-2">
+          <SecondaryButton onClick={() => setRotation((r) => (r + 90) % 360)}>
+            Roter 90°
+          </SecondaryButton>
+          <SecondaryButton onClick={onNewImage}>Nytt bilde</SecondaryButton>
+        </div>
+
         <PrimaryButton disabled={busy} onClick={() => void handleConfirm()}>
-          {busy ? "Behandler …" : "Bruk dette utsnittet"}
+          {busy ? "Behandler …" : "Bruk utsnitt og analyser"}
         </PrimaryButton>
-        <SecondaryButton onClick={() => setRotation((r) => (r + 90) % 360)}>
-          Roter
-        </SecondaryButton>
-        <SecondaryButton onClick={onNewImage}>Velg nytt bilde</SecondaryButton>
-        <button type="button" className="min-h-11 py-2 text-stone-300 underline" onClick={onBack}>
+
+        <button type="button" className="min-h-11 w-full py-1 text-sm text-stone-400 underline" onClick={onBack}>
           Tilbake
         </button>
       </div>
-    </GlassCard>
+    </div>
   );
 }
