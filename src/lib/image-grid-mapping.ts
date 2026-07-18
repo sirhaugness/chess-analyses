@@ -2,6 +2,24 @@ import type { BoardOrientation } from "./types";
 import type { RecognizedPiece } from "./types";
 
 /** Square name e.g. a8 */
+/** Rotate image grid coordinates clockwise in 90° steps (for sideways board photos). */
+export function rotateImageCell(
+  imageRow: number,
+  imageColumn: number,
+  quarterTurnsClockwise: number,
+): { imageRow: number; imageColumn: number } {
+  let row = imageRow;
+  let col = imageColumn;
+  const turns = ((quarterTurnsClockwise % 4) + 4) % 4;
+  for (let i = 0; i < turns; i++) {
+    const nextRow = col;
+    const nextCol = 7 - row;
+    row = nextRow;
+    col = nextCol;
+  }
+  return { imageRow: row, imageColumn: col };
+}
+
 export function imageCellToSquare(
   imageRow: number,
   imageColumn: number,

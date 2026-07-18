@@ -49,6 +49,7 @@ export default function App() {
 
   const [rawRecognition, setRawRecognition] = useState<BoardRecognitionResult | null>(null);
   const [orientation, setOrientation] = useState<BoardOrientation>("white_at_bottom");
+  const [imageQuarterTurns, setImageQuarterTurns] = useState(0);
   const [recognizedPieces, setRecognizedPieces] = useState<PlacedPiece[]>([]);
   const [confirmedPhotoPieces, setConfirmedPhotoPieces] = useState<PlacedPiece[]>([]);
   const [analysisStartPieces, setAnalysisStartPieces] = useState<PlacedPiece[]>([]);
@@ -79,6 +80,12 @@ export default function App() {
       return !canEnterAnalysisMode(issues);
     },
     [meta.activeColor],
+  );
+
+  const remapRecognitionPieces = useCallback(
+    (result: BoardRecognitionResult, orient: BoardOrientation, quarterTurns: number) =>
+      piecesFromRecognition(result, orient, quarterTurns),
+    [],
   );
 
   const handleFile = useCallback(async (file: File) => {
@@ -132,7 +139,8 @@ export default function App() {
     }
 
     const orient = guessToOrientation(result.orientationGuess);
-    const pieces = piecesFromRecognition(result, orient);
+    setImageQuarterTurns(0);
+    const pieces = remapRecognitionPieces(result, orient, 0);
     setRawRecognition(result);
     setOrientation(orient);
     setRecognizedPieces(pieces);
@@ -145,17 +153,31 @@ export default function App() {
     }
     if (!enterAnalysis(pieces, orient)) return;
     setPhase("analysis");
-  }, [croppedImage, enterAnalysis, hasPositionErrors]);
+  }, [croppedImage, enterAnalysis, hasPositionErrors, remapRecognitionPieces]);
 
   const restoreRecognition = () => {
     if (!rawRecognition) return;
-    setRecognizedPieces(piecesFromRecognition(rawRecognition, orientation));
+    setImageQuarterTurns(0);
+    setRecognizedPieces(remapRecognitionPieces(rawRecognition, orientation, 0));
   };
 
   const onOrientationChange = (o: BoardOrientation) => {
     setOrientation(o);
     if (rawRecognition) {
-      setRecognizedPieces(piecesFromRecognition(rawRecognition, o));
+      setRecognizedPieces(remapRecognitionPieces(rawRecognition, o, imageQuarterTurns));
+    }
+  };
+
+  const rotateImageMapping = () => {
+    if (!rawRecognition) return;
+    const nextTurns = (imageQuarterTurns + 1) % 4;
+    const pieces = remapRecognitionPieces(rawRecognition, orientation, nextTurns);
+    setImageQuarterTurns(nextTurns);
+    setRecognizedPieces(pieces);
+    setConfirmedPhotoPieces(pieces);
+    setAnalysisStartPieces(pieces);
+    if (phase === "analysis") {
+      enterAnalysis(pieces, orientation);
     }
   };
 
@@ -209,6 +231,8 @@ export default function App() {
           orientation={orientation}
           onPiecesChange={setRecognizedPieces}
           onOrientationChange={onOrientationChange}
+          onRotateImageMapping={rotateImageMapping}
+          imageQuarterTurns={imageQuarterTurns}
           onRestoreRecognition={restoreRecognition}
           onClearBoard={() => setRecognizedPieces([])}
           meta={meta}
@@ -297,6 +321,12 @@ export default function App() {
               </BoardControls.Secondary>
               <BoardControls.Secondary onClick={analysis.flipBoard}>
                 Snu brettet
+              </BoardControls.Secondary>
+              <BoardControls.Secondary
+                onClick={rotateImageMapping}
+                disabled={!rawRecognition}
+              >
+                Rett opp vinkel (90°)
               </BoardControls.Secondary>
             </div>
             <BoardControls.Primary

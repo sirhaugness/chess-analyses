@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import type { BoardRecognitionResult, BoardOrientation, PlacedPiece, PositionMeta } from "../lib/types";
 import { classifyConfidence } from "../lib/chess-position";
-import { imageCellToSquare } from "../lib/image-grid-mapping";
+import { imageCellToSquare, rotateImageCell } from "../lib/image-grid-mapping";
 import { piecesToMapUpdate } from "../hooks/useChessAnalysis";
 import { ReviewChessboard } from "./ReviewChessboard";
 import { PiecePalette } from "./PiecePalette";
@@ -17,6 +17,8 @@ type Props = {
   orientation: BoardOrientation;
   onPiecesChange: (pieces: PlacedPiece[]) => void;
   onOrientationChange: (o: BoardOrientation) => void;
+  onRotateImageMapping: () => void;
+  imageQuarterTurns: number;
   onRestoreRecognition: () => void;
   onClearBoard: () => void;
   meta: PositionMeta;
@@ -30,6 +32,8 @@ export function RecognitionReview({
   orientation,
   onPiecesChange,
   onOrientationChange,
+  onRotateImageMapping,
+  imageQuarterTurns,
   onRestoreRecognition,
   onClearBoard,
   meta,
@@ -43,10 +47,11 @@ export function RecognitionReview({
   const ambiguousSquares = useMemo(() => {
     const set = new Set<string>();
     for (const cell of result.ambiguousCells) {
-      set.add(imageCellToSquare(cell.imageRow, cell.imageColumn, orientation));
+      const rotated = rotateImageCell(cell.imageRow, cell.imageColumn, imageQuarterTurns);
+      set.add(imageCellToSquare(rotated.imageRow, rotated.imageColumn, orientation));
     }
     return set;
-  }, [result.ambiguousCells, orientation]);
+  }, [result.ambiguousCells, orientation, imageQuarterTurns]);
 
   const confidenceLabel = classifyConfidence(result.overallConfidence);
   const confidenceText =
@@ -111,7 +116,10 @@ export function RecognitionReview({
       </div>
 
       <SecondaryButton className="!w-auto !min-h-10 self-start px-4" onClick={rotateBoard}>
-        Roter brettet
+        Snu hvit/svart nederst
+      </SecondaryButton>
+      <SecondaryButton className="!w-auto !min-h-10 self-start px-4" onClick={onRotateImageMapping}>
+        Rett opp vinkel (90°)
       </SecondaryButton>
 
       <ReviewChessboard

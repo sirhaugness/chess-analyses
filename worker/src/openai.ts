@@ -9,7 +9,7 @@ import {
   validateRecognitionResult,
 } from "./responses";
 
-const OPENAI_TIMEOUT_MS = 90_000;
+const OPENAI_TIMEOUT_MS = 45_000;
 
 export async function analyzeBoardWithOpenAI(
   env: Env,
@@ -31,7 +31,7 @@ export async function analyzeBoardWithOpenAI(
     timeout: OPENAI_TIMEOUT_MS,
   });
 
-  const model = env.OPENAI_MODEL || "gpt-5.6";
+  const model = env.OPENAI_MODEL || "gpt-4o-mini";
 
   try {
     const response = await openai.responses.parse({
@@ -45,7 +45,7 @@ export async function analyzeBoardWithOpenAI(
             {
               type: "input_image",
               image_url: imageDataUrl,
-              detail: "original",
+              detail: "low",
             },
           ],
         },

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { imageCellToSquare, validateImageCoordinates } from "../src/lib/image-grid-mapping";
+import {
+  imageCellToSquare,
+  rotateImageCell,
+  validateImageCoordinates,
+} from "../src/lib/image-grid-mapping";
 import {
   buildFen,
   buildPiecePlacement,
@@ -7,6 +11,24 @@ import {
   fenToPieces,
 } from "../src/lib/chess-position";
 import type { RecognizedPiece } from "../shared/board-recognition-schema";
+
+describe("rotateImageCell", () => {
+  it("maps corners correctly for 90° clockwise steps", () => {
+    expect(rotateImageCell(0, 0, 0)).toEqual({ imageRow: 0, imageColumn: 0 });
+    expect(rotateImageCell(0, 0, 1)).toEqual({ imageRow: 0, imageColumn: 7 });
+    expect(rotateImageCell(0, 0, 2)).toEqual({ imageRow: 7, imageColumn: 7 });
+    expect(rotateImageCell(0, 0, 3)).toEqual({ imageRow: 7, imageColumn: 0 });
+    expect(rotateImageCell(2, 5, 4)).toEqual(rotateImageCell(2, 5, 0));
+  });
+
+  it("changes mapped square when board photo is sideways", () => {
+    const before = imageCellToSquare(0, 0, "white_at_bottom");
+    const rotated = rotateImageCell(0, 0, 1);
+    const after = imageCellToSquare(rotated.imageRow, rotated.imageColumn, "white_at_bottom");
+    expect(before).toBe("a8");
+    expect(after).not.toBe(before);
+  });
+});
 
 describe("image grid mapping white at bottom", () => {
   it("maps top-left to a8 and bottom-right to h1", () => {

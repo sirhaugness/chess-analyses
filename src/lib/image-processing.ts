@@ -5,11 +5,11 @@ export {
   compressCanvasToJpeg,
   estimateDataUrlBytes,
 } from "./perspective-export";
-import { compressCanvasToJpeg, EXPORT_MAX_SIZE } from "./perspective-export";
+import { compressCanvasToJpeg, RECOGNITION_EXPORT_SIZE } from "./perspective-export";
 import { yieldToMain } from "./async-utils";
 
-/** Max longest edge for the working copy used in crop/detection (keeps memory and OpenCV fast). */
-export const PREPARE_MAX_EDGE = 2400;
+/** Max longest edge for the working copy used in crop (keeps memory and upload fast). */
+export const PREPARE_MAX_EDGE = 1600;
 
 export function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -74,8 +74,9 @@ export async function getCroppedImage(
   rctx.rotate(rad);
   rctx.drawImage(image, -image.width / 2, -image.height / 2);
 
-  canvas.width = EXPORT_MAX_SIZE;
-  canvas.height = EXPORT_MAX_SIZE;
+  const size = RECOGNITION_EXPORT_SIZE;
+  canvas.width = size;
+  canvas.height = size;
   ctx.drawImage(
     rotCanvas,
     pixelCrop.x,
@@ -84,11 +85,11 @@ export async function getCroppedImage(
     pixelCrop.height,
     0,
     0,
-    EXPORT_MAX_SIZE,
-    EXPORT_MAX_SIZE,
+    size,
+    size,
   );
 
-  return compressCanvasToJpeg(canvas);
+  return compressCanvasToJpeg(canvas, [0.72, 0.65, 0.58, 0.5]);
 }
 
 function loadImage(src: string): Promise<HTMLImageElement> {
